@@ -650,7 +650,7 @@ export default class Bot {
         return new Promise((resolve, reject) => {
             apiRequest<GithubPackageJson>({
                 method: 'GET',
-                url: 'https://raw.githubusercontent.com/TF2-Price-DB/tf2autobot-pricedb/master/package.json',
+                url: 'https://raw.githubusercontent.com/uwu6967/tf2autobot-pricedb/master/package.json',
                 signal: axiosAbortSignal(60000)
             })
                 .then(data => {

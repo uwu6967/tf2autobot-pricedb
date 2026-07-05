@@ -172,6 +172,31 @@ Example:
 
 Controls which events trigger Discord/webhook alerts. All keys are booleans under `sendAlert` and its sub-objects. See the example file for the full list.
 
+## Discord webhooks
+
+Trade notifications are sent as rich Discord embeds when webhook URLs are configured under `discordWebhook`.
+
+| Setting | Purpose |
+|---|---|
+| `offerReview.url` | Counter/review trade notifications |
+| `tradeSummary.url` | Accepted trade notifications (array) |
+| `declinedTrade.url` | Declined trade notifications (array) |
+
+As of **v5.16.7**, if `tradeSummary.url` or `declinedTrade.url` is empty but `offerReview.url` is set, the bot automatically reuses the offer review webhook. This keeps accepted trades formatted like countered trades without duplicating URLs in `options.json`.
+
+For separate channels, set explicit URLs in each section:
+
+```json
+"tradeSummary": {
+    "enable": true,
+    "url": ["https://discord.com/api/webhooks/..."]
+},
+"offerReview": {
+    "enable": true,
+    "url": "https://discord.com/api/webhooks/..."
+}
+```
+
 ## Editing safely
 
 - The bot validates `options.json` on load — invalid JSON will prevent startup

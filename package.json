@@ -1,6 +1,6 @@
 {
     "name": "tf2autobot-pricedb-io",
-    "version": "5.16.6",
+    "version": "5.16.7",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
     "scripts": {
@@ -18,16 +18,16 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/TF2-Price-DB/tf2autobot-pricedb.git"
+        "url": "git+https://github.com/uwu6967/tf2autobot-pricedb.git"
     },
     "author": "TF2Autobot/IdiNium",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/TF2-Price-DB/tf2autobot-pricedb/issues"
+        "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "New version may require changes to your options.json! Please check the readme for details!",
-    "homepage": "https://github.com/TF2-Price-DB/tf2autobot-pricedb#readme",
+    "updateMessage": "Accepted and declined trade Discord notifications now use your offer review webhook when trade summary URLs are empty — accepted trades show the rich embed again without extra options.json changes.",
+    "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",
         "@tf2autobot/bptf-login": "^2.4.0",

@@ -1,5 +1,5 @@
 import { Action, TradeOffer } from '@tf2autobot/tradeoffer-manager';
-import { getPartnerDetails, quickLinks, sendWebhook } from './utils';
+import { getPartnerDetails, getDiscordWebhookUrls, quickLinks, sendWebhook } from './utils';
 import Bot from '../Bot';
 import * as t from '../../lib/tools/export';
 import log from '../../lib/logger';
@@ -189,7 +189,7 @@ export default async function sendTradeDeclined(
         });
     }
 
-    const url = optDW.declinedTrade.url;
+    const url = getDiscordWebhookUrls(optDW.declinedTrade.url, optDW.offerReview.url, optDW.declinedTrade.enable);
 
     url.forEach((link, i) => {
         sendWebhook(link, declinedTradeSummary, 'trade-declined', i).catch(err => {
