@@ -15,6 +15,7 @@ import Pricelist, { Entry, EntryData, PricelistChangedSource } from '../../Price
 import validator from '../../../lib/validator';
 import { testPriceKey } from '../../../lib/tools/export';
 import IPricer from '../../IPricer';
+import { formatCategoryList, normalizeBulkAddCategory, resolveCategorySkus } from './bulkAddFilters';
 import { Currency } from 'src/types/TeamFortress2';
 
 // Pricelist manager
@@ -511,6 +512,10 @@ export default class PricelistManagerCommands {
     }
 
     autoAddCommand(steamID: SteamID, message: string, prefix: string): void {
+        void this.runAutoAddCommand(steamID, message, prefix);
+    }
+
+    private async runAutoAddCommand(steamID: SteamID, message: string, prefix: string): Promise<void> {
         if (AutoAddQueue.isRunning()) {
             return this.bot.sendMessage(
                 steamID,
@@ -530,6 +535,27 @@ export default class PricelistManagerCommands {
                 `❌ Please only define item listing settings parameters, more info:` +
                     ` https://github.com/TF2Autobot/tf2autobot/wiki/Listing-settings-parameters`
             );
+        }
+
+        const categoryParam =
+            typeof params.category === 'string'
+                ? normalizeBulkAddCategory(params.category)
+                : typeof params.filter === 'string'
+                ? normalizeBulkAddCategory(params.filter)
+                : null;
+
+        if (params.category !== undefined || params.filter !== undefined) {
+            if (categoryParam === null) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ Unknown category "${String(params.category ?? params.filter)}".` +
+                        `\nAvailable categories: ${formatCategoryList()}` +
+                        `\nExample: ${prefix}autoadd category=unusual&intent=2&autoprice=true`
+                );
+            }
+
+            delete params.category;
+            delete params.filter;
         }
 
         if (!params) {
@@ -655,24 +681,47 @@ export default class PricelistManagerCommands {
         const pricelist = this.bot.pricelist.getPrices;
         const skusFromPricelist = Object.keys(pricelist);
 
-        const dict = this.bot.inventoryManager.getInventory.getItems;
-        const clonedDict = Object.assign({}, dict);
+        let skus: string[];
 
-        const pureAndWeapons = ['5021;6', '5000;6', '5001;6', '5002;6'].concat(
-            this.bot.craftWeapons.concat(this.bot.uncraftWeapons)
-        );
+        if (categoryParam) {
+            this.bot.sendMessage(steamID, `⏳ Fetching "${categoryParam}" items from the pricer...`);
 
-        for (const sku in clonedDict) {
-            if (!Object.prototype.hasOwnProperty.call(clonedDict, sku)) {
-                continue;
+            try {
+                skus = await resolveCategorySkus(this.bot, this.priceSource, categoryParam);
+            } catch (err) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ Failed to fetch items from the pricer: ${(err as Error).message}`
+                );
             }
 
-            if (pureAndWeapons.includes(sku)) {
-                delete clonedDict[sku];
+            if (skus.length === 0) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ No "${categoryParam}" items found in the pricer database.`
+                );
             }
+        } else {
+            const dict = this.bot.inventoryManager.getInventory.getItems;
+            const clonedDict = Object.assign({}, dict);
+
+            const pureAndWeapons = ['5021;6', '5000;6', '5001;6', '5002;6'].concat(
+                this.bot.craftWeapons.concat(this.bot.uncraftWeapons)
+            );
+
+            for (const sku in clonedDict) {
+                if (!Object.prototype.hasOwnProperty.call(clonedDict, sku)) {
+                    continue;
+                }
+
+                if (pureAndWeapons.includes(sku)) {
+                    delete clonedDict[sku];
+                }
+            }
+
+            skus = Object.keys(clonedDict);
         }
 
-        const skus = Object.keys(clonedDict);
         const total = skus.length;
 
         const totalTime = total * (params.autoprice ? 2 : 1) * 1000;
@@ -683,6 +732,7 @@ export default class PricelistManagerCommands {
         this.bot.sendMessage(
             steamID,
             `⏳ Running automatic add items... Total items to add: ${total}` +
+                (categoryParam ? ` (category: ${categoryParam})` : '') +
                 `\n${params.autoprice ? 2 : 1} seconds in between items, so it will be about ${
                     totalTime < aMin
                         ? `${Math.round(totalTime / aSecond)} seconds`

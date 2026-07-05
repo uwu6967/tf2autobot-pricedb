@@ -75,8 +75,8 @@ export default class HelpCommands {
                         `${prefix}sku <Full Item Name|Item's sku> - Get the sku of an item.`,
                         `add (sku|name|defindex|item|id)=<a>&[Listing-parameters] - Add a pricelist entry ➕`,
                         `addbulk (sku|item)=<a>&[Listing-parameters]<Enter (new line)><second and so on>... - Bulk add pricelist entries ➕➕➕`,
-                        `autoadd [Listing-parameters] - Perform automatic adding items to the pricelist based on items that are currently` +
-                            ` available in your bot inventory (about 2 seconds every item) 🤖`,
+                        `autoadd [Listing-parameters] - Add items from your inventory to the pricelist (about 2 seconds per item) 🤖`,
+                        `autoadd category=<type>&[Listing-parameters] - Bulk add from pricer by category (unusual, unique, strange, vintage, genuine, haunted, collectors, all) 📦`,
                         `stopautoadd - Stop automatic add items operation 🛑`,
                         `update (sku|name|defindex|item|id)=<a>&[Listing-parameters] - Update a pricelist entry 🔄`,
                         `updatebulk (sku|item)=<a>&[Listing-parameters]<Enter (new line)><second and so on>... - Bulk update pricelist entries 🔄🔄🔄`,
