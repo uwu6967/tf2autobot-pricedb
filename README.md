@@ -250,13 +250,17 @@ tf2autobot-pricedb/
 
 ## Documentation
 
-For detailed setup, troubleshooting, and `options.json` reference, the upstream pricedb.io fork wiki is still the best resource:
+Full setup guides, configuration reference, and troubleshooting are on the wiki:
 
-- [Wiki home](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki)
-- [Configuring the bot](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Configuring-the-bot)
-- [options.json reference](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Configure-your-options.json-file)
-- [Common errors](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Common-Errors)
-- [FAQ](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/FAQ)
+- [Wiki home](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki)
+- [Getting Started](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/Getting-Started)
+- [Installing the Bot](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/Installing-the-Bot)
+- [GUI Panel](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/GUI-Panel)
+- [Configuring the Bot](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/Configuring-the-Bot)
+- [options.json reference](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/Configure-your-options.json-file)
+- [PriceDB Store](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/PriceDB-Store)
+- [Common Errors](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/Common-Errors)
+- [FAQ](https://github.com/gfghdg2233/tf2autobot-pricedb/wiki/FAQ)
 
 For issues specific to this fork, open an issue on this repository.
 
