@@ -4,6 +4,44 @@ A fully automated Team Fortress 2 trading bot that lists items on [backpack.tf](
 
 This repository is a personal fork built on top of the [pricedb.io edition](https://github.com/TF2-Price-DB/tf2autobot-pricedb), which itself extends the original **[TF2Autobot](https://github.com/TF2Autobot/tf2autobot)** project. If you have run TF2Autobot before, most of the setup and day-to-day workflow will feel familiar.
 
+**This bot is intended to run alongside the [TF2Autobot GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel).** The panel is the recommended way to manage your pricelist, review trades, edit settings, and monitor profit — the bot handles Steam trading in the background and communicates with the panel over IPC.
+
+## GUI Panel
+
+The companion web panel lives in a separate repository:
+
+**[github.com/gfghdg2233/tf2autobot-gui-panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)**
+
+| Component | Role |
+|---|---|
+| **This repo (bot)** | Logs into Steam, processes trades, manages backpack.tf listings |
+| **[GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)** | Browser UI for pricelist, trades, settings, profit tracking |
+
+The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
+
+### Running bot + panel together
+
+1. **Start the bot** with IPC enabled in your `.env`:
+
+```bash
+IPC=true
+```
+
+2. **Start the GUI panel** (in a separate terminal):
+
+```bash
+git clone https://github.com/gfghdg2233/tf2autobot-gui-panel.git
+cd tf2autobot-gui-panel
+npm install
+cp template.env .env
+npm run build
+npm start
+```
+
+3. Open **http://localhost:3000** in your browser and connect to your bot.
+
+See the [panel README](https://github.com/gfghdg2233/tf2autobot-gui-panel) for full setup, Steam admin login, TLS/VPS deployment, and troubleshooting.
+
 ## What this bot does
 
 - Logs into Steam and manages trade offers automatically
@@ -40,6 +78,7 @@ Deletion is deferred until the inventory is fully loaded and the TF2 GC queue is
 ## Requirements
 
 - **Node.js 22+**
+- **[TF2Autobot GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)** — required for the intended setup (pricelist management, settings, trade review)
 - A Steam account with:
   - Steam Guard Mobile Authenticator
   - A valid trade URL
@@ -95,13 +134,33 @@ cp .example/options.json files/<your_steam_username>/options.json
 
 The example file at [`.example/options.json`](.example/options.json) is the best reference for available settings.
 
-### 4. Run the bot
+### 4. Enable IPC
+
+The GUI panel connects to the bot over IPC. Make sure this is set in your `.env`:
+
+```bash
+IPC=true
+```
+
+### 5. Run the bot
 
 ```bash
 node dist/app.js
 ```
 
 For production, PM2 is recommended. See [`template.ecosystem.json`](template.ecosystem.json) for a starting point.
+
+### 6. Start the GUI panel
+
+With the bot running, start the panel from its own repository:
+
+```bash
+git clone https://github.com/gfghdg2233/tf2autobot-gui-panel.git
+cd tf2autobot-gui-panel
+npm install && cp template.env .env && npm run build && npm start
+```
+
+Open **http://localhost:3000**, connect to your bot, and manage everything from the browser. Full panel docs: [tf2autobot-gui-panel](https://github.com/gfghdg2233/tf2autobot-gui-panel).
 
 ## Configuration highlights
 
@@ -226,6 +285,7 @@ This project would not exist without the work of many people:
 | [tf2-automatic](https://github.com/Nicklason/tf2-automatic) | Nicklason — original automatic trading bot |
 | [pricedb.io TF2Autobot fork](https://github.com/TF2-Price-DB/tf2autobot-pricedb) | TF2-Price-DB / Oliver Perring — pricedb.io integration |
 | [Easy Copy Paste](https://github.com/TryHardDo/EasyCopyPaste) | TryHardDo — ECP listing commands |
+| [TF2Autobot GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel) | Companion web UI for this bot |
 
 ## License
 
