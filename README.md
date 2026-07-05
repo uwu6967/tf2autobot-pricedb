@@ -1,30 +1,113 @@
-# TF2Autobot (pricedb.io fork)
+# TF2Autobot — PriceDB Fork
 
-**[Join our Discord server here!](https://pricedb.io/discord)**
+A fully automated Team Fortress 2 trading bot that lists items on [backpack.tf](https://backpack.tf) and prices them using [pricedb.io](https://pricedb.io).
 
-This is a fork of [TF2Autobot](https://github.com/idinium96/tf2autobot), with changes made to work and use [pricedb.io](https://pricedb.io) as the default pricing source after the shutdown of prices.tf.
+This repository is a personal fork built on top of the [pricedb.io edition](https://github.com/TF2-Price-DB/tf2autobot-pricedb), which itself extends the original **[TF2Autobot](https://github.com/TF2Autobot/tf2autobot)** project. If you have run TF2Autobot before, most of the setup and day-to-day workflow will feel familiar.
 
-It keeps the core behaviour and setup flow of the original project, but:
+## What this bot does
 
--   Uses [pricedb.io](https://pricedb.io) as the default pricer.
--   Integrates the [pricedb.io](https://crit.tf) Store API so backpack.tf sell listings can be mirrored to pricedb.io.
--   Key Pricing Configuration to allow the key value context to be set (default same behaviour as autobot)
+- Logs into Steam and manages trade offers automatically
+- Creates and maintains backpack.tf buy/sell listings from your pricelist
+- Accepts, declines, and counters trades based on your rules
+- Supports Discord alerts, admin commands, and a wide range of trading features from the upstream project
 
-If you already know how to run TF2Autobot, you can treat this as a drop‑in replacement with the extra pricedb.io integration enabled.
+## What's different in this fork
 
-## Getting started
+Compared to upstream TF2Autobot, this lineage adds:
 
-All general installation and configuration steps are the same as TF2Autobot. Follow the new updated wiki below for:
+- **[pricedb.io](https://pricedb.io)** as the default pricing source (replacing the old prices.tf workflow)
+- **PriceDB Store integration** — sell listings on backpack.tf can be mirrored to your pricedb.io/crit.tf store
+- **[Journal.tf](https://journal.tf)** integration for portfolio and profit tracking
+- **Easy Copy Paste (ECP)** — user-friendly buy/sell command aliases in listing notes
+- **Improved Partial Price Update (PPU)** — FIFO queue logic for multi-unit stock protection
+- **Separate key buy/sell rates** for more accurate trade valuation
+- **Expanded untradable junk deletion** — waits for inventory to load, supports IPC trigger from a GUI panel, and covers a broader set of junk defindexes
 
--   [Setup & configuration](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki)
--   [Environment variables](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Configuring-the-bot)
--   [`options.json` reference](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Configure-your-options.json-file)
+### Untradable junk deletion
 
-### Global Disable for Chat Messages
+When enabled, the bot automatically deletes disposable untradable items (party hats, noise makers, soul gargoyles, etc.) from your TF2 inventory.
 
-After Valve started banning bots for sending messages it has been the recommendation that your bot doesnt send chat messages. To solve this a global block has been added which can be seen below. It is suggested to set your values to the below as a minimum however disabling commands is also suggested.
+```json
+"miscSettings": {
+    "deleteUntradableJunk": {
+        "enable": true
+    }
+}
+```
 
-Configure in `options.json`:
+Deletion is deferred until the inventory is fully loaded and the TF2 GC queue is idle, so items are not missed on startup. If you use the GUI panel, junk deletion can also be triggered over IPC.
+
+## Requirements
+
+- **Node.js 22+**
+- A Steam account with:
+  - Steam Guard Mobile Authenticator
+  - A valid trade URL
+- A [backpack.tf](https://backpack.tf) API key
+- A [pricedb.io](https://pricedb.io) account (for default pricing)
+
+Optional but recommended:
+
+- [PM2](https://pm2.keymetrics.io/) or Docker for running in production
+- Discord bot token for alerts and remote commands
+- PriceDB Store API key if you want store mirroring
+
+## Quick start
+
+### 1. Clone and install
+
+```bash
+git clone https://github.com/gfghdg2233/tf2autobot-pricedb.git
+cd tf2autobot-pricedb
+npm install
+npm run build
+```
+
+### 2. Configure environment variables
+
+Copy the example env file and fill in your credentials locally. **Never commit your real `.env` file** — it is gitignored by default.
+
+```bash
+cp .env.example .env
+```
+
+Required variables:
+
+| Variable | Description |
+|---|---|
+| `STEAM_ACCOUNT_NAME` | Steam login username |
+| `STEAM_PASSWORD` | Steam login password |
+| `STEAM_SHARED_SECRET` | Shared secret from your Steam authenticator |
+| `STEAM_IDENTITY_SECRET` | Identity secret for trade confirmations |
+| `BPTF_API_KEY` | backpack.tf API key |
+| `BPTF_ACCESS_TOKEN` | backpack.tf access token |
+
+See [`.env.example`](.env.example) for the full list, including optional integrations (Discord, inventory APIs, Journal.tf, custom pricer, etc.).
+
+### 3. Configure `options.json`
+
+Copy the example options file into your bot's `files/<steam_account_name>/` directory and edit it to match your trading strategy:
+
+```bash
+mkdir -p files/<your_steam_username>
+cp .example/options.json files/<your_steam_username>/options.json
+```
+
+The example file at [`.example/options.json`](.example/options.json) is the best reference for available settings.
+
+### 4. Run the bot
+
+```bash
+node dist/app.js
+```
+
+For production, PM2 is recommended. See [`template.ecosystem.json`](template.ecosystem.json) for a starting point.
+
+## Configuration highlights
+
+### Global chat disable
+
+Valve has been banning bots that send Steam chat messages. It is strongly recommended to disable non-essential messaging:
 
 ```json
 "globalDisable": {
@@ -35,49 +118,53 @@ Configure in `options.json`:
 }
 ```
 
-Look at the example [options.json](.example/options.json) for where this should go in the options file!
+### PriceDB Store mirroring
 
-### Easy Copy Paste (ECP)
+To mirror sell listings to pricedb.io/crit.tf:
 
-[Easy Copy Paste](https://github.com/TryHardDo/EasyCopyPaste) by [TryHardDo](https://github.com/TryHardDo/) has been integrated in this project. What this allows you to do is change you buy and sell commands to a much easier and user friendly format.
-
-For example `!buy Burning Team Captain` becomes `buy_burning_team_captain` which is far easier to copy from listings. In order to add this to your listings you would update your buy and sell messages as per the below example.
-
-```json
-    "buy": "🔥 %price% 📦 Stock : %current_stock% / %max_stock%. 💬 Send %ecp_item%. 👉 Visit %pricedb_store% for my store!",
-    "sell": "🔥 %price% 📦 Stock : %amount_trade% / %max_stock%. 💬 Send %ecp_item%. 👉 Visit %pricedb_store% for my store!",
-```
-
--   `%price%` - displays the price (e.g., `14 keys`).
--   `%name%` - displays the **item name** or **itemID**.
--   `%ecp_item%` - displays the trading command (e.g., sell_Mann_Co_Supply_Crate_Key).
--   `%max_stock%` - displays the maximum capacity of the item in the bot's inventory.
--   `%current_stock%` - displays the current count of the item in the bot's inventory.
--   `%pricedb_store%` - displays the URL of the bot's PriceDB store.
--   `%pricedb_item%` - displays the URL of the item.
-
-This results in listings like the below
-
-![ECP](img/ecp_listings.png)
-
-To set your ECP text to bold you would change the below in your `options.json`:
+1. Set `PRICEDB_STORE_API_KEY` in your `.env`
+2. Enable the store in `options.json`:
 
 ```json
-"ecp": {
-    "useBoldChars": true,
-    "useWordSwap": true
+"pricedbStore": {
+    "enable": true,
+    "enableInventoryRefresh": true
 }
 ```
 
-Look at the example [options.json](.example/options.json) for where this should go in the options file!
+3. Use template variables in your listing notes:
 
-### Pure Per Unit (PPU) Logic Updates
+| Variable | Replaced with |
+|---|---|
+| `%pricedb_store%` | Your store URL |
+| `%pricedb_item%` | Direct link to the item |
+| `%ecp_item%` | Easy Copy Paste trade command |
+| `%price%` | Listing price |
+| `%current_stock%` | Current stock count |
+| `%max_stock%` | Max stock limit |
 
-PPU has been reworked to handle stock counts of more than 1 item. This has been implemented through saving buys to a new queue working off FIFO (First in First out) logic. When a sale of an item is made the FIRST item in the queue dictates the lowest the sell price can fall before becoming frozen. The item will unfreeze if the sell raises above the first queued buy price again.
+Example listing note:
 
-This results in items not being sold for a loss but can mean items are held during dips in item prices. This can be resolved by setting a timeout on top of the PPU settings to automatically revoke the PPU boundary in order to take the loss but move the item.
+```json
+"buy": "🔥 %price% 📦 Stock: %current_stock% / %max_stock%. Send %ecp_item%. Store: %pricedb_store%"
+```
 
-Configure in `options.json`:
+### Separate key rates
+
+Control how keys are valued during trade calculations:
+
+```json
+"counterOffer": {
+    "enable": true,
+    "useSeparateKeyRates": true
+}
+```
+
+When enabled, keys the bot gives are valued at the **sell** price and keys the bot receives are valued at the **buy** price.
+
+### Partial Price Update (PPU)
+
+Protects against selling below your most recent buy price using FIFO queue logic:
 
 ```json
 "partialPriceUpdate": {
@@ -88,117 +175,58 @@ Configure in `options.json`:
     "maxProtectedUnits": -1,
     "minProfitScrap": 1,
     "stockGracePeriodSeconds": 3600
-},
-```
-
-Look at the example [options.json](.example/options.json) for where this should go in the options file!
-
-### Stats Command Improvements
-
-If upgrading, rename your existing `polldata.json` to `polldata.old.json` otherwise historical data will skew !stats (optional)
-The new stats system uses new logic to track profit by recording keys and metal separately to prevent point in time issues. These are used to provide estimated profit/loss with the !stats command. This change is backwards compatible with Autobot.
-
-### crit.tf configuration
-
-If you want to use crit.tf follow the below
-
-1. **Environment variable**
-
-    Set your pricedb.io Store API key in your process manager (PM2 ecosystem, Docker env, or system env):
-
-    ```bash
-    PRICEDB_STORE_API_KEY=your_pricedb_store_api_key_here
-    ```
-
-2. **`options.json` misc settings**
-
-    In your `options.json`, under `miscSettings`, add or update:
-
-    ```json
-    "pricedbStore": {
-      "enable": true,
-      "enableInventoryRefresh": true
-    }
-    ```
-
-    This enables the pricedb.io Store Manager and allows the bot to periodically refresh your pricedb.io inventory.
-
-3. **Template variable for listings**
-
-    You can include your pricedb.io store URL in your backpack.tf listing notes by using the `%pricedb_store%` template variable. The bot will automatically replace it with your friendly store URL (e.g., `https://crit.tf/sf/your-slug`).
-
-    Example in your listing note:
-
-    ```
-    Visit my store: %pricedb_store%
-    ```
-
-After these changes, rebuild (if needed) and fully restart the bot so the new environment variable is picked up.
-
----
-
-## Key Pricing Configuration
-
-The bot supports configurable key pricing behavior when calculating trade values to ensure accurate valuations.
-
-### Configuration Option
-
-In your `options.json`, under `miscSettings.counterOffer`, you can control how key prices are used:
-
-```json
-"counterOffer": {
-  "enable": true,
-  "useSeparateKeyRates": true
 }
 ```
 
-### Behavior
+### Journal.tf
 
-**When `useSeparateKeyRates: true`:**
+Set these in your `.env` to enable portfolio tracking:
 
--   Uses **sell price** when calculating the value of keys the bot is giving
--   Uses **buy price** when calculating the value of keys the bot is receiving
--   This ensures bot-favorable pricing in all trade calculations
+```bash
+JOURNAL_TF_ENABLE=true
+JOURNAL_TF_API_KEY=your_api_key_here
+```
 
-**When `useSeparateKeyRates: false` (default):**
+## Docker
 
--   Uses **sell price** for keys on both sides of the trade
--   Maintains the original bot behavior
+A `Dockerfile` is included. Build and run with your environment variables mounted or passed in at runtime. Do not bake secrets into the image.
 
-### Why This Matters
+## Project structure
 
-When processing offers, the bot needs to calculate the total value of items on each side of the trade. Keys are valued differently depending on whether the bot is buying or selling them.
+```
+tf2autobot-pricedb/
+├── src/                  # TypeScript source
+├── dist/                 # Compiled output (after npm run build)
+├── .example/             # Example options.json
+├── files/                # Per-account runtime data (gitignored)
+├── .env.example          # Environment variable template
+├── template.env          # Alternate env template
+└── template.ecosystem.json
+```
 
-With `useSeparateKeyRates: true`, the bot will:
+## Documentation
 
--   Value keys in "our items" (bot is giving) at the **sell price**
--   Value keys in "their items" (bot is receiving) at the **buy price**
+For detailed setup, troubleshooting, and `options.json` reference, the upstream pricedb.io fork wiki is still the best resource:
 
-This prevents value calculation errors and ensures the bot maintains proper profit margins when keys are involved in trades. The setting affects both initial offer processing and counter offer generation.
+- [Wiki home](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki)
+- [Configuring the bot](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Configuring-the-bot)
+- [options.json reference](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Configure-your-options.json-file)
+- [Common errors](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Common-Errors)
+- [FAQ](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/FAQ)
 
-**Example:**
-If key buy price is 60 ref and sell price is 61 ref:
-
--   `useSeparateKeyRates: true`: When bot gives 1 key, it's valued at 61 ref; when bot receives 1 key, it's valued at 60 ref
--   `useSeparateKeyRates: false`: All keys valued at 61 ref (sell price) regardless of direction (default autobot behaviour)
-
----
-
-## Links
-
-For general documentation, troubleshooting and FAQs, use the following wiki:
-
--   [Wiki home](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki)
--   [Common errors](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/Common-Errors)
--   [FAQ](https://github.com/TF2-Price-DB/tf2autobot-pricedb/wiki/FAQ)
-
-For issues or questions specific to this pricedb.io fork (or to my services), please join our Discord:
-
--   [Discord](https://discord.com/invite/7H2bceTgQK)
-
----
+For issues specific to this fork, open an issue on this repository.
 
 ## Credits
 
--   Original project: [TF2Autobot by IdiNium](https://github.com/idinium96/tf2autobot)
--   Based on [tf2-automatic by Nicklason](https://github.com/Nicklason/tf2-automatic)
+This project would not exist without the work of many people:
+
+| Project | Author / Maintainer |
+|---|---|
+| [TF2Autobot](https://github.com/TF2Autobot/tf2autobot) | TF2Autobot community — **direct upstream fork** |
+| [tf2-automatic](https://github.com/Nicklason/tf2-automatic) | Nicklason — original automatic trading bot |
+| [pricedb.io TF2Autobot fork](https://github.com/TF2-Price-DB/tf2autobot-pricedb) | TF2-Price-DB / Oliver Perring — pricedb.io integration |
+| [Easy Copy Paste](https://github.com/TryHardDo/EasyCopyPaste) | TryHardDo — ECP listing commands |
+
+## License
+
+MIT — see [LICENSE](LICENSE) for details.
