@@ -92,6 +92,7 @@ export default class ipcHandler extends IPC {
             this.ourServer.on('sendChat', this.sendChat.bind(this));
             this.ourServer.on('getOptions', this.sendOptions.bind(this));
             this.ourServer.on('updateOptions', this.updateOptions.bind(this));
+            this.ourServer.on('deleteUntradableJunk', this.deleteUntradableJunk.bind(this));
         };
         this[this.options.tls ? 'connectToNet' : 'connectTo']('autobot_gui', onConnected);
     }
@@ -235,6 +236,11 @@ export default class ipcHandler extends IPC {
                 this.ourServer.emit('optionsUpdated', msg);
                 return;
             });
+    }
+
+    private deleteUntradableJunk(): void {
+        this.bot.handler.deleteUntradableJunk();
+        this.ourServer.emit('untradableJunkDeleted', { success: true });
     }
 }
 

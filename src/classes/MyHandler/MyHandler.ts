@@ -156,6 +156,8 @@ export default class MyHandler extends Handler {
         return this.opt.miscSettings.deleteUntradableJunk.enable;
     }
 
+    private pendingUntradableJunkDelete = false;
+
     private isPremium = false;
 
     private botName = '';
@@ -262,8 +264,8 @@ export default class MyHandler extends Handler {
         }
 
         if (this.isDeletingUntradableJunk) {
-            // Delete untradable junk
-            this.deleteUntradableJunk();
+            this.pendingUntradableJunkDelete = true;
+            setTimeout(() => this.tryDeleteUntradableJunk(), 30000);
         }
 
         // Auto sell and buy keys if ref < minimum
@@ -2704,13 +2706,41 @@ export default class MyHandler extends Handler {
         });
     }
 
-    private deleteUntradableJunk(): void {
-        const assetidsToDelete = this.bot.inventoryManager.getInventory.findUntradableJunk();
+    tryDeleteUntradableJunk(): void {
+        if (!this.pendingUntradableJunkDelete || !this.isDeletingUntradableJunk) {
+            return;
+        }
 
+        const inventory = this.bot.inventoryManager?.getInventory;
+        if (!inventory) {
+            return;
+        }
+
+        this.pendingUntradableJunkDelete = false;
+        this.deleteUntradableJunk();
+    }
+
+    deleteUntradableJunk(): void {
+        const inventory = this.bot.inventoryManager?.getInventory;
+        if (!inventory) {
+            log.warn('Skipping untradable junk deletion — inventory not loaded yet');
+            this.pendingUntradableJunkDelete = true;
+            return;
+        }
+
+        const assetidsToDelete = inventory.findUntradableJunk();
+        if (assetidsToDelete.length === 0) {
+            log.debug('No untradable junk items found to delete');
+            return;
+        }
+
+        log.info(`Deleting ${assetidsToDelete.length} untradable junk item(s)...`);
         for (const assetid of assetidsToDelete) {
             log.debug(`Deleting junk item ${assetid}`);
             this.bot.tf2gc.deleteItem(assetid, err => {
-                log.warn('Error deleting untradable junk', err);
+                if (err) {
+                    log.warn(`Error deleting untradable junk ${assetid}:`, err);
+                }
             });
         }
     }
@@ -2778,6 +2808,7 @@ export default class MyHandler extends Handler {
     onTF2QueueCompleted(): void {
         log.debug('Queue finished');
         this.bot.client.gamesPlayed(this.opt.miscSettings.game.playOnlyTF2 ? 440 : [this.customGameName, 440]);
+        this.tryDeleteUntradableJunk();
     }
 
     onCreateListingsSuccessful(response: { created: number; archived: number; errors: any[] }): void {
