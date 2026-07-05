@@ -59,21 +59,6 @@ Compared to upstream TF2Autobot, this lineage adds:
 - **Easy Copy Paste (ECP)** — user-friendly buy/sell command aliases in listing notes
 - **Improved Partial Price Update (PPU)** — FIFO queue logic for multi-unit stock protection
 - **Separate key buy/sell rates** for more accurate trade valuation
-- **Expanded untradable junk deletion** — waits for inventory to load, supports IPC trigger from a GUI panel, and covers a broader set of junk defindexes
-
-### Untradable junk deletion
-
-When enabled, the bot automatically deletes disposable untradable items (party hats, noise makers, soul gargoyles, etc.) from your TF2 inventory.
-
-```json
-"miscSettings": {
-    "deleteUntradableJunk": {
-        "enable": true
-    }
-}
-```
-
-Deletion is deferred until the inventory is fully loaded and the TF2 GC queue is idle, so items are not missed on startup. If you use the GUI panel, junk deletion can also be triggered over IPC.
 
 ## Requirements
 
