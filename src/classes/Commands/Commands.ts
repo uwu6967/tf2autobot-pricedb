@@ -232,6 +232,8 @@ export default class Commands {
                 void this.pManager.getGroupsCommand(steamID);
             } else if (command === 'autoadd' && isAdmin) {
                 this.pManager.autoAddCommand(steamID, message, prefix);
+            } else if (command === 'addpricedb' && isAdmin) {
+                this.pManager.addPricedbCommand(steamID, message, prefix);
             } else if (command === 'stopautoadd' && isAdmin) {
                 this.pManager.stopAutoAddCommand();
             } else if (['expand', 'delete', 'use'].includes(command) && isAdmin) {
