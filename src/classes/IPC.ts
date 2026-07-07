@@ -201,7 +201,32 @@ export default class ipcHandler extends IPC {
     }
 
     sendInventory(): void {
-        this.ourServer.emit('inventory', this.bot.inventoryManager.getInventory.getItems);
+        const inventory = this.bot.inventoryManager?.getInventory;
+
+        if (!inventory) {
+            this.ourServer.emit('inventory', {
+                tradable: {},
+                nonTradable: {},
+                updatedAt: Date.now()
+            });
+            return;
+        }
+
+        this.ourServer.emit('inventory', {
+            tradable: ipcHandler.packInventoryBucket(inventory.getItems),
+            nonTradable: {},
+            updatedAt: Date.now()
+        });
+    }
+
+    private static packInventoryBucket(bucket: Record<string, { id: string | number }[]> | undefined): Record<string, string[]> {
+        const out: Record<string, string[]> = {};
+
+        for (const sku of Object.keys(bucket ?? {})) {
+            out[sku] = (bucket[sku] ?? []).map(item => String(item.id));
+        }
+
+        return out;
     }
 
     sendOptions(): void {
