@@ -7,6 +7,7 @@ import Bot from './Bot';
 import { noiseMakers, spellsData, killstreakersData, sheensData } from '../lib/data';
 import Pricelist from './Pricelist';
 import { UNTRADABLE_JUNK_DEFINDEXES } from './untradableJunkDefindexes';
+import log from '../lib/logger';
 
 export default class Inventory {
     private readonly steamID: SteamID;
@@ -450,14 +451,22 @@ export default class Inventory {
         const isNormalizeCraftNumber = isAdmin ? false : bot.options.normalize.craftNumber[which];
 
         for (let i = 0; i < itemsCount; i++) {
-            const getSku = items[i].getSKU(
-                bot.schema,
-                isNormalizeFestivized,
-                isNormalizeStrangeAsSecondQuality,
-                isNormalizePainted,
-                isNormalizeCraftNumber,
-                this.paintedOptions
-            );
+            let getSku: { sku: string; isPainted: boolean };
+
+            try {
+                getSku = items[i].getSKU(
+                    bot.schema,
+                    isNormalizeFestivized,
+                    isNormalizeStrangeAsSecondQuality,
+                    isNormalizePainted,
+                    isNormalizeCraftNumber,
+                    this.paintedOptions
+                );
+            } catch (err) {
+                const itemName = items[i].market_hash_name ?? items[i].name ?? items[i].id;
+                log.warn(`Skipping inventory item ${itemName} (asset ${items[i].id}): failed to resolve SKU`, err);
+                continue;
+            }
 
             let sku = getSku.sku;
 

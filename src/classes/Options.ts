@@ -2648,6 +2648,52 @@ export function loadOptions(options?: Options): Options {
     return deepMerge(jsonOptions, envOptions, incomingOptions);
 }
 
+function coerceWebhookUrlList(url: unknown): string[] {
+    if (Array.isArray(url)) {
+        return url.map(entry => String(entry).trim()).filter(Boolean);
+    }
+
+    if (typeof url === 'string' && url.trim() !== '') {
+        return [url.trim()];
+    }
+
+    return [];
+}
+
+/** Normalize discordWebhook fields before schema validation (panel IPC / GUI saves). */
+export function normalizeDiscordWebhookOptions(options: JsonOptions): void {
+    const dw = options.discordWebhook;
+    if (!dw) {
+        return;
+    }
+
+    if (dw.embedColor !== undefined) {
+        dw.embedColor = String(dw.embedColor);
+    }
+
+    if (dw.ownerID !== undefined) {
+        if (!Array.isArray(dw.ownerID)) {
+            dw.ownerID = dw.ownerID === '' ? [] : [String(dw.ownerID)];
+        } else {
+            dw.ownerID = dw.ownerID.map(id => String(id)).filter(id => id.trim() !== '');
+        }
+    }
+
+    if (dw.tradeSummary?.url !== undefined) {
+        dw.tradeSummary.url = coerceWebhookUrlList(dw.tradeSummary.url);
+    }
+
+    if (dw.declinedTrade?.url !== undefined) {
+        dw.declinedTrade.url = coerceWebhookUrlList(dw.declinedTrade.url);
+    }
+
+    if (dw.tradeSummary?.mentionOwner?.itemSkus !== undefined && Array.isArray(dw.tradeSummary.mentionOwner.itemSkus)) {
+        dw.tradeSummary.mentionOwner.itemSkus = dw.tradeSummary.mentionOwner.itemSkus
+            .map(sku => String(sku))
+            .filter(Boolean);
+    }
+}
+
 export function getFilesPath(accountName: string): string {
     return path.resolve(__dirname, '..', '..', 'files', accountName);
 }

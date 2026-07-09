@@ -5,7 +5,7 @@ import log from '../lib/logger';
 import Bot from './Bot';
 import fs, { promises as fsp } from 'fs';
 import path from 'path';
-import Options, { getOptionsPath, JsonOptions, removeCliOptions } from './Options';
+import Options, { getOptionsPath, JsonOptions, normalizeDiscordWebhookOptions, removeCliOptions } from './Options';
 import generateCert from '../lib/tools/generateCert';
 import { Entry, EntryData } from './Pricelist';
 import { deepMerge } from '../lib/tools/deep-merge';
@@ -238,6 +238,7 @@ export default class ipcHandler extends IPC {
 
     updateOptions(newOptions): void {
         const opt = this.bot.options;
+        normalizeDiscordWebhookOptions(newOptions as JsonOptions);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const errors = validator(newOptions, 'options');
         if (errors !== null) {
