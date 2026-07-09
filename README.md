@@ -10,12 +10,12 @@ This repository is a personal fork built on top of the [pricedb.io edition](http
 
 The companion web panel lives in a separate repository:
 
-**[github.com/gfghdg2233/tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)**
+**[github.com/uwu6967/tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)**
 
 | Component | Role |
 |---|---|
 | **This repo (bot)** | Logs into Steam, processes trades, manages backpack.tf listings |
-| **[GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)** | Browser UI for pricelist, trades, settings, profit tracking |
+| **[GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel)** | Browser UI for pricelist, trades, settings, profit tracking |
 
 The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
 
@@ -30,7 +30,7 @@ IPC=true
 2. **Start the GUI panel** (in a separate terminal):
 
 ```bash
-git clone https://github.com/gfghdg2233/tf2autobot-gui-panel.git
+git clone https://github.com/uwu6967/tf2autobot-gui-panel.git
 cd tf2autobot-gui-panel
 npm install
 cp template.env .env
@@ -140,7 +140,7 @@ For production, PM2 is recommended. See [`template.ecosystem.json`](template.eco
 With the bot running, start the panel from its own repository:
 
 ```bash
-git clone https://github.com/gfghdg2233/tf2autobot-gui-panel.git
+git clone https://github.com/uwu6967/tf2autobot-gui-panel.git
 cd tf2autobot-gui-panel
 npm install && cp template.env .env && npm run build && npm start
 ```
@@ -276,7 +276,7 @@ This project would not exist without the work of many people:
 | [tf2-automatic](https://github.com/Nicklason/tf2-automatic) | Nicklason — original automatic trading bot |
 | [pricedb.io TF2Autobot fork](https://github.com/TF2-Price-DB/tf2autobot-pricedb) | TF2-Price-DB / Oliver Perring — pricedb.io integration |
 | [Easy Copy Paste](https://github.com/TryHardDo/EasyCopyPaste) | TryHardDo — ECP listing commands |
-| [TF2Autobot GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel) | Companion web UI for this bot |
+| [TF2Autobot GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) | Companion web UI for this bot |
 
 ## License
 

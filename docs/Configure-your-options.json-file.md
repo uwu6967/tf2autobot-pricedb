@@ -29,7 +29,7 @@ You can edit this file directly or through the [GUI Panel](GUI-Panel) settings p
 | `autoprice` | Autoprice settings |
 | `normalize` | SKU normalization rules |
 
-The full example at [`.example/options.json`](https://github.com/gfghdg2233/tf2autobot-pricedb/blob/master/.example/options.json) is the authoritative reference for every available key.
+The full example at [`.example/options.json`](https://github.com/uwu6967/tf2autobot-pricedb/blob/master/.example/options.json) is the authoritative reference for every available key.
 
 ## globalDisable
 
@@ -212,4 +212,4 @@ If upgrading from an older version, rename `polldata.json` to `polldata.old.json
 
 - [PriceDB Store](PriceDB-Store)
 - [Configuring the Bot](Configuring-the-Bot)
-- [Example options.json](https://github.com/gfghdg2233/tf2autobot-pricedb/blob/master/.example/options.json)
+- [Example options.json](https://github.com/uwu6967/tf2autobot-pricedb/blob/master/.example/options.json)

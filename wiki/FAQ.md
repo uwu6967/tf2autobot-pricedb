@@ -4,7 +4,7 @@
 
 ### What is this project?
 
-A fork of [TF2Autobot](https://github.com/TF2Autobot/tf2autobot) that uses [pricedb.io](https://pricedb.io) for pricing and is designed to run with the [GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel).
+A fork of [TF2Autobot](https://github.com/TF2Autobot/tf2autobot) that uses [pricedb.io](https://pricedb.io) for pricing and is designed to run with the [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel).
 
 ### Do I need the GUI panel?
 
@@ -72,7 +72,7 @@ No — only sell listings.
 
 ### Can I access the panel remotely?
 
-Yes. Deploy both bot and panel on a VPS. See the [panel TUTORIAL.md](https://github.com/gfghdg2233/tf2autobot-gui-panel/blob/main/TUTORIAL.md) for VPS/SSL setup.
+Yes. Deploy both bot and panel on a VPS. See the [panel TUTORIAL.md](https://github.com/uwu6967/tf2autobot-gui-panel/blob/main/TUTORIAL.md) for VPS/SSL setup.
 
 ### Does the panel need my Steam secrets?
 

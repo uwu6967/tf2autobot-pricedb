@@ -20,6 +20,6 @@
 ---
 
 **Repositories**
-* [Bot](https://github.com/gfghdg2233/tf2autobot-pricedb)
-* [GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)
+* [Bot](https://github.com/uwu6967/tf2autobot-pricedb)
+* [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel)
 * [TF2Autobot (upstream)](https://github.com/TF2Autobot/tf2autobot)

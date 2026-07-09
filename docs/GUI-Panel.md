@@ -2,7 +2,7 @@
 
 The bot is designed to run with the companion web panel:
 
-**[github.com/gfghdg2233/tf2autobot-gui-panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)**
+**[github.com/uwu6967/tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)**
 
 The panel provides a browser UI for pricelist management, trade review, settings editing, profit tracking, and more. It connects to your running bot over IPC.
 
@@ -25,7 +25,7 @@ The panel **does not** log into Steam or process trades. All Steam interaction h
 ## Installation
 
 ```bash
-git clone https://github.com/gfghdg2233/tf2autobot-gui-panel.git
+git clone https://github.com/uwu6967/tf2autobot-gui-panel.git
 cd tf2autobot-gui-panel
 npm install
 cp template.env .env
@@ -82,7 +82,7 @@ For a public server:
 2. Enable `SSL=true` with valid certificates, or put the panel behind a reverse proxy (nginx, Caddy)
 3. Only list your SteamID as a bot admin in the bot `.env` `ADMINS` field when `STEAM_AUTH=true`
 
-See the [panel TUTORIAL.md](https://github.com/gfghdg2233/tf2autobot-gui-panel/blob/main/TUTORIAL.md) for a full walkthrough.
+See the [panel TUTORIAL.md](https://github.com/uwu6967/tf2autobot-gui-panel/blob/main/TUTORIAL.md) for a full walkthrough.
 
 ## Troubleshooting
 
@@ -104,6 +104,6 @@ Change `PORT` in the panel `.env` to another port (e.g. `3001`).
 
 ## Further reading
 
-- [Panel README](https://github.com/gfghdg2233/tf2autobot-gui-panel)
-- [Panel TUTORIAL.md](https://github.com/gfghdg2233/tf2autobot-gui-panel/blob/main/TUTORIAL.md)
+- [Panel README](https://github.com/uwu6967/tf2autobot-gui-panel)
+- [Panel TUTORIAL.md](https://github.com/uwu6967/tf2autobot-gui-panel/blob/main/TUTORIAL.md)
 - [Getting Started](Getting-Started)
