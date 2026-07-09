@@ -4,13 +4,13 @@ A fully automated Team Fortress 2 trading bot that lists items on [backpack.tf](
 
 This repository is a personal fork built on top of the [pricedb.io edition](https://github.com/TF2-Price-DB/tf2autobot-pricedb), which itself extends the original **[TF2Autobot](https://github.com/TF2Autobot/tf2autobot)** project. If you have run TF2Autobot before, most of the setup and day-to-day workflow will feel familiar.
 
-**This bot is intended to run alongside the [TF2Autobot GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel).** The panel is the recommended way to manage your pricelist, review trades, edit settings, and monitor profit — the bot handles Steam trading in the background and communicates with the panel over IPC.
+**This bot is intended to run alongside the [TF2Autobot GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel).** The panel is the recommended way to manage your pricelist, review trades, edit settings, and monitor profit — the bot handles Steam trading in the background and communicates with the panel over IPC.
 
 ## GUI Panel
 
 The companion web panel lives in a separate repository:
 
-**[github.com/gfghdg2233/tf2autobot-gui-panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)**
+**[github.com/gfghdg2233/tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)**
 
 | Component | Role |
 |---|---|
@@ -40,7 +40,7 @@ npm start
 
 3. Open **http://localhost:3000** in your browser and connect to your bot.
 
-See the [panel README](https://github.com/gfghdg2233/tf2autobot-gui-panel) for full setup, Steam admin login, TLS/VPS deployment, and troubleshooting.
+See the [panel README](https://github.com/uwu6967/tf2autobot-gui-panel) for full setup, Steam admin login, TLS/VPS deployment, and troubleshooting.
 
 ## What this bot does
 
@@ -63,7 +63,7 @@ Compared to upstream TF2Autobot, this lineage adds:
 ## Requirements
 
 - **Node.js 22+**
-- **[TF2Autobot GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel)** — required for the intended setup (pricelist management, settings, trade review)
+- **[TF2Autobot GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel)** — required for the intended setup (pricelist management, settings, trade review)
 - A Steam account with:
   - Steam Guard Mobile Authenticator
   - A valid trade URL
@@ -145,7 +145,7 @@ cd tf2autobot-gui-panel
 npm install && cp template.env .env && npm run build && npm start
 ```
 
-Open **http://localhost:3000**, connect to your bot, and manage everything from the browser. Full panel docs: [tf2autobot-gui-panel](https://github.com/gfghdg2233/tf2autobot-gui-panel).
+Open **http://localhost:3000**, connect to your bot, and manage everything from the browser. Full panel docs: [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel).
 
 ## Configuration highlights
 
