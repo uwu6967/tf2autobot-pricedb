@@ -77,6 +77,20 @@ interface StartData {
     blockedList?: Blocked;
 }
 
+const GITHUB_RELEASES_URL = 'https://github.com/uwu6967/tf2autobot-pricedb/releases';
+
+/** Ignore legacy upstream 5.x when the fork runs 1.x so semver does not prefer old tags. */
+function isForkUpdateAvailable(current: string, latest: string): boolean {
+    const currentMajor = semver.major(current);
+    const latestMajor = semver.major(latest);
+
+    if (currentMajor < 5 && latestMajor >= 5) {
+        return false;
+    }
+
+    return semver.lt(current, latest);
+}
+
 export default class Bot {
     // Modules and classes
     readonly ipc?: ipcHandler;
@@ -584,8 +598,9 @@ export default class Bot {
             const canUpdateRepo = content.canUpdateRepo;
             const updateMessage = content.updateMessage;
 
-            const hasNewVersion = semver.lt(process.env.BOT_VERSION, latestVersion);
-            const newVersionIsMajor = semver.diff(process.env.BOT_VERSION, latestVersion) === 'major';
+            const hasNewVersion = isForkUpdateAvailable(process.env.BOT_VERSION, latestVersion);
+            const newVersionIsMajor =
+                hasNewVersion && semver.diff(process.env.BOT_VERSION, latestVersion) === 'major';
 
             if (this.lastNotifiedVersion !== latestVersion && hasNewVersion) {
                 this.lastNotifiedVersion = latestVersion;
@@ -593,7 +608,7 @@ export default class Bot {
                 this.messageAdmins(
                     'version',
                     `⚠️ Update available! Current: v${process.env.BOT_VERSION}, Latest: v${latestVersion}.` +
-                        `\n\n📰 Check discord (https://pricedb.io/discord) for release notes` +
+                        `\n\n📰 Check GitHub for release notes: ${GITHUB_RELEASES_URL}` +
                         (updateMessage ? `\n\n💬 Update message: ${updateMessage}` : ''),
                     []
                 );
