@@ -1,6 +1,6 @@
 {
     "name": "tf2autobot-pricedb-io",
-    "version": "1.0.1",
+    "version": "1.0.2",
     "upstreamVersion": "5.16.11",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
@@ -27,7 +27,7 @@
         "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "Update notifications now link to GitHub releases. Fixed false update alerts comparing fork v1.x against legacy upstream v5.x tags.",
+    "updateMessage": "Version update alerts are now sent to Discord via webhook and bot DMs (when configured).",
     "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",

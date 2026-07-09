@@ -40,6 +40,7 @@ import InventoryCostBasis from './InventoryCostBasis';
 import log from '../lib/logger';
 import Bans, { IsBanned } from '../lib/bans';
 import { sendStats } from './DiscordWebhook/export';
+import sendVersionUpdate from './DiscordWebhook/sendVersionUpdate';
 
 import Options from './Options';
 import IPricer from './IPricer';
@@ -482,6 +483,10 @@ export default class Bot {
         this.admins
             .filter(steamID => !exclude.includes(steamID.toString()))
             .forEach(steamID => this.sendMessage(steamID, message));
+
+        if (type === 'version') {
+            sendVersionUpdate(this, message);
+        }
     }
 
     getPrefix(steamID?: SteamID): string {
