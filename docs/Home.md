@@ -4,14 +4,14 @@ Welcome to the documentation for [tf2autobot-pricedb](https://github.com/uwu6967
 
 Browse online: **[docs site](https://uwu6967.github.io/tf2autobot-pricedb/Home.html)** · **[GitHub Wiki](https://github.com/uwu6967/tf2autobot-pricedb/wiki)**
 
-This is a fork of [TF2Autobot](https://github.com/TF2Autobot/tf2autobot) adapted for [pricedb.io](https://pricedb.io) pricing, with a companion [GUI Panel](https://github.com/gfghdg2233/tf2autobot-gui-panel) for day-to-day management.
+This is a fork of [TF2Autobot](https://github.com/TF2Autobot/tf2autobot) adapted for [pricedb.io](https://pricedb.io) pricing, with a companion [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) for day-to-day management.
 
 ## What you need
 
 | Component | Repository | Purpose |
 |---|---|---|
-| **Bot** | [tf2autobot-pricedb](https://github.com/gfghdg2233/tf2autobot-pricedb) | Steam login, trades, backpack.tf listings |
-| **GUI Panel** | [tf2autobot-gui-panel](https://github.com/gfghdg2233/tf2autobot-gui-panel) | Browser UI for pricelist, settings, trades, profit |
+| **Bot** | [tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb) | Steam login, trades, backpack.tf listings |
+| **GUI Panel** | [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel) | Browser UI for pricelist, settings, trades, profit |
 
 The bot and panel run as **two separate processes**. The panel talks to the bot over IPC — it does not log into Steam itself.
 
@@ -47,6 +47,6 @@ The bot and panel run as **two separate processes**. The panel talks to the bot 
 
 ## Support
 
-Open an issue on the [bot repository](https://github.com/gfghdg2233/tf2autobot-pricedb/issues) for fork-specific problems.
+Open an issue on the [bot repository](https://github.com/uwu6967/tf2autobot-pricedb/issues) for fork-specific problems.
 
-For the GUI panel, use the [panel repository](https://github.com/gfghdg2233/tf2autobot-gui-panel/issues).
+For the GUI panel, use the [panel repository](https://github.com/uwu6967/tf2autobot-gui-panel/issues).

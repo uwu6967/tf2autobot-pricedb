@@ -19,7 +19,7 @@ This project builds on the work of many contributors in the TF2 trading bot comm
 
 | Project | Link | Notes |
 |---|---|---|
-| **TF2Autobot GUI Panel** | [github.com/gfghdg2233/tf2autobot-gui-panel](https://github.com/gfghdg2233/tf2autobot-gui-panel) | Web UI for this bot |
+| **TF2Autobot GUI Panel** | [github.com/uwu6967/tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel) | Web UI for this bot |
 | **TF2Autobot GUI (original)** | [github.com/TF2Autobot/tf2autobot-gui](https://github.com/TF2Autobot/tf2autobot-gui) | Original GUI by Zeus_Junior |
 | **Easy Copy Paste** | [github.com/TryHardDo/EasyCopyPaste](https://github.com/TryHardDo/EasyCopyPaste) | ECP listing commands by TryHardDo |
 
@@ -44,10 +44,10 @@ This bot uses the `@tf2autobot/*` npm packages maintained by the TF2Autobot comm
 
 ## License
 
-MIT — see [LICENSE](https://github.com/gfghdg2233/tf2autobot-pricedb/blob/master/LICENSE) in the bot repository.
+MIT — see [LICENSE](https://github.com/uwu6967/tf2autobot-pricedb/blob/master/LICENSE) in the bot repository.
 
 ## This fork
 
-Maintained at [github.com/gfghdg2233/tf2autobot-pricedb](https://github.com/gfghdg2233/tf2autobot-pricedb).
+Maintained at [github.com/uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb).
 
 If you use this project, please respect the licenses and credit the upstream projects above.

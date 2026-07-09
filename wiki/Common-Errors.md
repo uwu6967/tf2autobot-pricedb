@@ -92,7 +92,7 @@ Change `PORT` in the panel `.env` to another port.
 ### Bot won't start — options error
 
 - Validate JSON syntax (trailing commas are invalid)
-- Compare against [`.example/options.json`](https://github.com/gfghdg2233/tf2autobot-pricedb/blob/master/.example/options.json)
+- Compare against [`.example/options.json`](https://github.com/uwu6967/tf2autobot-pricedb/blob/master/.example/options.json)
 - Use the GUI panel editor for safer changes
 
 ### Changes not applying
@@ -126,6 +126,6 @@ DEBUG_FILE=true
 
 ## Still stuck?
 
-1. Search [existing issues](https://github.com/gfghdg2233/tf2autobot-pricedb/issues)
+1. Search [existing issues](https://github.com/uwu6967/tf2autobot-pricedb/issues)
 2. Open a new issue with your error message and relevant log lines (redact secrets)
-3. For panel issues, use the [panel issue tracker](https://github.com/gfghdg2233/tf2autobot-gui-panel/issues)
+3. For panel issues, use the [panel issue tracker](https://github.com/uwu6967/tf2autobot-gui-panel/issues)
