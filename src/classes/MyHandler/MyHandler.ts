@@ -229,8 +229,13 @@ export default class MyHandler extends Handler {
     }
 
     onReady(): void {
+        const upstreamSuffix =
+            process.env.BOT_UPSTREAM_VERSION && process.env.BOT_UPSTREAM_VERSION !== ''
+                ? ` (upstream v${process.env.BOT_UPSTREAM_VERSION})`
+                : '';
+
         log.info(
-            `TF2Autobot v${process.env.BOT_VERSION} is ready | ${pluralize(
+            `TF2Autobot v${process.env.BOT_VERSION}${upstreamSuffix} is ready | ${pluralize(
                 'item',
                 this.bot.pricelist.getLength,
                 true

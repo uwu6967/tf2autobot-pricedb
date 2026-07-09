@@ -434,9 +434,14 @@ export default class StatusCommands {
     }
 
     versionCommand(steamID: SteamID): void {
+        const upstreamSuffix =
+            process.env.BOT_UPSTREAM_VERSION && process.env.BOT_UPSTREAM_VERSION !== ''
+                ? ` (based on upstream v${process.env.BOT_UPSTREAM_VERSION})`
+                : '';
+
         this.bot.sendMessage(
             steamID,
-            `Currently running TF2Autobot@v${process.env.BOT_VERSION}. Checking for a new version...`
+            `Currently running TF2Autobot@v${process.env.BOT_VERSION}${upstreamSuffix}. Checking for a new version...`
         );
 
         this.bot.checkForUpdates

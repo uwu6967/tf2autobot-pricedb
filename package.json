@@ -1,6 +1,7 @@
 {
     "name": "tf2autobot-pricedb-io",
-    "version": "5.16.11",
+    "version": "1.0.0",
+    "upstreamVersion": "5.16.11",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
     "scripts": {
@@ -26,7 +27,7 @@
         "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "Fix !withdraw/!deposit parsing with leading amounts and item names. Prevent inventory SKU crashes on unknown killstreak fabricator targets.",
+    "updateMessage": "Fork versioning now starts at v1.0.0. Based on upstream tf2autobot-pricedb v5.16.11 with withdraw parsing and inventory crash fixes.",
     "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",
