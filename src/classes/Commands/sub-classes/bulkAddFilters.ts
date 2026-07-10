@@ -29,7 +29,11 @@ export const BULK_ADD_CATEGORIES = [
 
 export type BulkAddCategory = (typeof BULK_ADD_CATEGORIES)[number];
 
-type ParsedSku = ReturnType<typeof SKU.fromString> & { strange?: boolean };
+function parseSku(sku: string) {
+    return SKU.fromString(sku);
+}
+
+type ParsedSku = ReturnType<typeof parseSku> & { strange?: boolean };
 
 export function normalizeBulkAddCategory(raw: string): BulkAddCategory | null {
     const value = raw.toLowerCase().trim().replace(/s$/, '');
