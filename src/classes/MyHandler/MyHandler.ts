@@ -184,6 +184,10 @@ export default class MyHandler extends Handler {
 
     private isUpdating = false;
 
+    get isUpdatingStatus(): boolean {
+        return this.isUpdating;
+    }
+
     set isUpdatingStatus(setStatus: boolean) {
         this.isUpdating = setStatus;
     }
