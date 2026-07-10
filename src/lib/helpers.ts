@@ -4,6 +4,11 @@ export function exponentialBackoff(n: number, base = 1000): number {
     return Math.pow(2, n) * base + Math.floor(Math.random() * base);
 }
 
+export function isSteamRateLimitError(err: unknown): boolean {
+    const error = err as { code?: number; message?: string };
+    return error?.code === 429 || (typeof error?.message === 'string' && error.message.includes('429'));
+}
+
 export function parseJSON(json: string): UnknownDictionaryKnownValues | null {
     try {
         return JSON.parse(json) as UnknownDictionaryKnownValues;
