@@ -48,7 +48,7 @@ import { EventEmitter } from 'events';
 import { Blocked } from './MyHandler/interfaces';
 import ipcHandler from './IPC';
 import filterAxiosError from '@tf2autobot/filter-axios-error';
-import { axiosAbortSignal } from '../lib/helpers';
+import { axiosAbortSignal, exponentialBackoff, isSteamRateLimitError } from '../lib/helpers';
 import { apiRequest } from '../lib/apiRequest';
 import EasyCopyPaste from 'easycopypaste';
 
@@ -440,11 +440,34 @@ export default class Bot {
                         void this.getLocalizationFile('retry').then(resolve).catch(reject);
                         return;
                     }
-                    // Just log, do nothing.
+                    // Non-critical; bot can run without the latest localization file.
                     log.warn('Error getting TF2 Localization file.');
-                    reject(err as Error);
+                    resolve();
                 });
         });
+    }
+
+    private scheduleTradeURLRefresh(attempt = 0): void {
+        const delay = exponentialBackoff(attempt, 60000);
+        setTimeout(() => {
+            this.community.getTradeURL((err: unknown, url: unknown) => {
+                if (err) {
+                    if (isSteamRateLimitError(err) && attempt < 10) {
+                        log.warn(`Background trade URL refresh rate limited, will retry (attempt ${attempt + 1})`);
+                        this.scheduleTradeURLRefresh(attempt + 1);
+                        return;
+                    }
+
+                    if (attempt < 10) {
+                        this.scheduleTradeURLRefresh(attempt + 1);
+                    }
+                    return;
+                }
+
+                this.tradeOfferUrl = url as string;
+                log.debug('Trade URL refreshed in background');
+            });
+        }, delay);
     }
 
     get alertTypes(): string[] {
@@ -1360,15 +1383,31 @@ export default class Bot {
                             .catch(err => callback(err as Error));
                     },
                     (callback: Callback): void => {
-                        this.community.getTradeURL((err: unknown, url: unknown) => {
-                            if (err) {
-                                callback(err as Error);
-                                return;
-                            }
+                        const tryGetTradeURL = (attempt = 0): void => {
+                            this.community.getTradeURL((err: unknown, url: unknown) => {
+                                if (err && isSteamRateLimitError(err) && attempt < 1) {
+                                    const delay = exponentialBackoff(attempt, 15000);
+                                    log.warn(`Rate limited getting trade URL, retrying in ${delay}ms...`);
+                                    setTimeout(() => tryGetTradeURL(attempt + 1), delay);
+                                    return;
+                                }
 
-                            this.tradeOfferUrl = url as string;
-                            callback(null);
-                        });
+                                if (err) {
+                                    log.warn(
+                                        'Failed to get trade URL during startup (will retry in background): ',
+                                        err
+                                    );
+                                    this.scheduleTradeURLRefresh();
+                                    callback(null);
+                                    return;
+                                }
+
+                                this.tradeOfferUrl = url as string;
+                                callback(null);
+                            });
+                        };
+
+                        tryGetTradeURL();
                     }
                 ],
                 (item: (cb: Callback) => void, callback: Callback): void => {
