@@ -1,6 +1,6 @@
 {
     "name": "tf2autobot-pricedb-io",
-    "version": "1.0.2",
+    "version": "1.0.3",
     "upstreamVersion": "5.16.11",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
@@ -27,7 +27,7 @@
         "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "Version update alerts are now sent to Discord via webhook and bot DMs (when configured).",
+    "updateMessage": "Steam HTTP 429 rate limits no longer crash the bot or trigger PM2 restart loops. Trade URL fetch and escrow checks retry gracefully.",
     "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",
