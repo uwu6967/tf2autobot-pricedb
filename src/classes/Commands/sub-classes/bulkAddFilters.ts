@@ -29,6 +29,8 @@ export const BULK_ADD_CATEGORIES = [
 
 export type BulkAddCategory = (typeof BULK_ADD_CATEGORIES)[number];
 
+type ParsedSku = ReturnType<typeof SKU.fromString> & { strange?: boolean };
+
 export function normalizeBulkAddCategory(raw: string): BulkAddCategory | null {
     const value = raw.toLowerCase().trim().replace(/s$/, '');
 
@@ -49,7 +51,7 @@ function isJunkSku(sku: string, bot: Bot): boolean {
         return true;
     }
 
-    let item: SKU.Item;
+    let item: ParsedSku;
     try {
         item = SKU.fromString(sku);
     } catch {
@@ -65,7 +67,7 @@ function matchesCategory(sku: string, category: BulkAddCategory, bot: Bot): bool
         return !isJunkSku(sku, bot);
     }
 
-    let item: SKU.Item;
+    let item: ParsedSku;
     try {
         item = SKU.fromString(sku);
     } catch {
