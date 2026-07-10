@@ -1495,8 +1495,19 @@ export default class Trades {
         }, 3 * 60 * 1000);
     }
 
+    clearEscrowRestart(): void {
+        clearTimeout(this.restartOnEscrowCheckFailed);
+        this.escrowCheckFailedCount = 0;
+    }
+
     private async triggerRestartBot(steamID: string): Promise<void> {
         log.debug(`Escrow check problem occured, current failed count: ${this.escrowCheckFailedCount}`);
+
+        if (this.bot.handler.isUpdatingStatus) {
+            log.warn('Skipping escrow auto-restart while bot is updating');
+            this.clearEscrowRestart();
+            return;
+        }
 
         if (this.escrowCheckFailedCount >= 2) {
             // if escrow check failed more than or equal to 2 times, then perform automatic restart (PM2 only)
