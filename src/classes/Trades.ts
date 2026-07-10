@@ -20,7 +20,7 @@ import Bot from './Bot';
 import Inventory, { Dict } from './Inventory';
 
 import log from '../lib/logger';
-import { exponentialBackoff } from '../lib/helpers';
+import { exponentialBackoff, isSteamRateLimitError } from '../lib/helpers';
 import { sendAlert } from './DiscordWebhook/export';
 import { isBptfBanned } from '../lib/bans';
 import * as t from '../lib/tools/export';
@@ -1434,9 +1434,10 @@ export default class Trades {
 
         return new Promise((resolve, reject) => {
             const operation = retry.operation({
-                retries: 5,
+                retries: 8,
                 factor: 2,
-                minTimeout: 1000,
+                minTimeout: 5000,
+                maxTimeout: 60000,
                 randomize: true
             });
 
@@ -1451,6 +1452,11 @@ export default class Trades {
                         }
 
                         if (err) {
+                            if (isSteamRateLimitError(err)) {
+                                log.warn('Escrow check rate limited by Steam after retries');
+                                return reject(err);
+                            }
+
                             this.escrowCheckFailedCount++;
 
                             clearTimeout(this.restartOnEscrowCheckFailed);
