@@ -19,7 +19,7 @@ The companion web panel lives in a separate repository:
 
 The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
 
-**Tested together:** bot **v1.0.4** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.5.6**.
+**Tested together:** bot **v1.0.5** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.1**.
 
 ### Running bot + panel together
 
