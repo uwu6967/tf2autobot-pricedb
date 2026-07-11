@@ -1,6 +1,6 @@
 {
     "name": "tf2autobot-pricedb-io",
-    "version": "1.0.4",
+    "version": "1.0.5",
     "upstreamVersion": "5.16.11",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
@@ -27,7 +27,7 @@
         "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "!updaterepo no longer deletes dist before a successful build, skips escrow auto-restart during updates, and fails cleanly on compile errors instead of leaving the bot without a working dist.",
+    "updateMessage": "Pricelist add/update/remove IPC errors are now sent as readable strings so the GUI panel can show real bot error messages.",
     "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",
