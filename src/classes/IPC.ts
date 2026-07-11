@@ -104,6 +104,18 @@ export default class ipcHandler extends IPC {
         if (item?.style) delete item.style;
     }
 
+    private static ipcErrorMessage(error: unknown): string {
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        if (typeof error === 'string') {
+            return error;
+        }
+
+        return String(error);
+    }
+
     /* HANDLERS */
     private addItem(item: Item): void {
         ipcHandler.cleanItem(item);
@@ -118,8 +130,8 @@ export default class ipcHandler extends IPC {
             .then(item => {
                 this.ourServer.emit('itemAdded', Object.assign(item, priceKey === item.sku ? {} : { id: priceKey }));
             })
-            .catch((e: string) => {
-                this.ourServer.emit('itemAdded', e);
+            .catch((e: unknown) => {
+                this.ourServer.emit('itemAdded', ipcHandler.ipcErrorMessage(e));
             });
     }
 
@@ -136,8 +148,8 @@ export default class ipcHandler extends IPC {
             .then(item => {
                 this.ourServer.emit('itemUpdated', Object.assign(item, priceKey === item.sku ? {} : { id: priceKey }));
             })
-            .catch((e: string) => {
-                this.ourServer.emit('itemUpdated', e);
+            .catch((e: unknown) => {
+                this.ourServer.emit('itemUpdated', ipcHandler.ipcErrorMessage(e));
             });
     }
 
@@ -147,8 +159,8 @@ export default class ipcHandler extends IPC {
             .then(item => {
                 this.ourServer.emit('itemRemoved', Object.assign(item, priceKey === item.sku ? {} : { id: priceKey }));
             })
-            .catch((e: string) => {
-                this.ourServer.emit('itemRemoved', e);
+            .catch((e: unknown) => {
+                this.ourServer.emit('itemRemoved', ipcHandler.ipcErrorMessage(e));
             });
     }
 
