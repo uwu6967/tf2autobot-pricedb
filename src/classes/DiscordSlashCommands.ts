@@ -293,6 +293,101 @@ function lookupOnlyOptions(valueDescription: string) {
     return [lookupOption(true), valueOption(valueDescription)];
 }
 
+function autokeysOptions() {
+    return [
+        {
+            name: 'enable',
+            description: 'Turn Autokeys on or off',
+            type: ApplicationCommandOptionType.Boolean as const,
+            required: false
+        },
+        {
+            name: 'min_keys',
+            description: 'Minimum keys to keep',
+            type: ApplicationCommandOptionType.Integer as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'max_keys',
+            description: 'Maximum keys to keep',
+            type: ApplicationCommandOptionType.Integer as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'min_refined',
+            description: 'Minimum refined metal',
+            type: ApplicationCommandOptionType.Number as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'max_refined',
+            description: 'Maximum refined metal',
+            type: ApplicationCommandOptionType.Number as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'banking',
+            description: 'Enable key auto-banking',
+            type: ApplicationCommandOptionType.Boolean as const,
+            required: false
+        },
+        {
+            name: 'scrap_adjustment',
+            description: 'Enable scrap adjustment',
+            type: ApplicationCommandOptionType.Boolean as const,
+            required: false
+        },
+        {
+            name: 'scrap_value',
+            description: 'Scrap adjustment value (scraps)',
+            type: ApplicationCommandOptionType.Integer as const,
+            required: false,
+            min_value: 0
+        }
+    ];
+}
+
+function buildAutokeysSlashParams(options: SlashOptionReader): string {
+    const parts: string[] = [];
+    const enable = options.getBoolean('enable');
+    if (enable !== null) {
+        parts.push(`enable=${enable}`);
+    }
+    const minKeys = options.getInteger('min_keys');
+    if (minKeys !== null) {
+        parts.push(`minKeys=${minKeys}`);
+    }
+    const maxKeys = options.getInteger('max_keys');
+    if (maxKeys !== null) {
+        parts.push(`maxKeys=${maxKeys}`);
+    }
+    const minRef = options.getNumber('min_refined');
+    if (minRef !== null) {
+        parts.push(`minRefined=${minRef}`);
+    }
+    const maxRef = options.getNumber('max_refined');
+    if (maxRef !== null) {
+        parts.push(`maxRefined=${maxRef}`);
+    }
+    const banking = options.getBoolean('banking');
+    if (banking !== null) {
+        parts.push(`banking=${banking}`);
+    }
+    const scrapAdj = options.getBoolean('scrap_adjustment');
+    if (scrapAdj !== null) {
+        parts.push(`scrapAdjustment=${scrapAdj}`);
+    }
+    const scrapValue = options.getInteger('scrap_value');
+    if (scrapValue !== null) {
+        parts.push(`scrapAdjustmentValue=${scrapValue}`);
+    }
+    return parts.join('&');
+}
+
 /** Slash commands registered with Discord on bot startup. */
 export function getSlashCommandDefinitions(): RESTPostAPIChatInputApplicationCommandsJSONBody[] {
     const cmd = (
@@ -334,6 +429,8 @@ export function getSlashCommandDefinitions(): RESTPostAPIChatInputApplicationCom
         cmd('uptime', 'Show how long the bot has been online'),
         cmd('check', 'Force a listings check (admin)'),
         cmd('refreshlist', 'Refresh backpack.tf listings (admin)'),
+        cmd('autokeys', 'Show or change Autokeys settings (set options are admin-only)', autokeysOptions()),
+        cmd('refreshautokeys', 'Force a refresh of Autokeys settings (admin)'),
         cmd('add', 'Add a pricelist entry (admin)', pricelistListingOptions(true)),
         cmd('update', 'Update a pricelist entry (admin)', pricelistListingOptions(false)),
         cmd('remove', 'Remove a pricelist entry (admin)', lookupOnlyOptions('Item to remove')),
@@ -464,6 +561,16 @@ export function resolveSlashRoute(interactionName: string, options: SlashOptionR
             return { prefixMessage: '!check', adminOnly: true };
         case 'refreshlist':
             return { prefixMessage: '!refreshlist', adminOnly: true };
+        case 'autokeys': {
+            const params = buildAutokeysSlashParams(options);
+            // Viewing status is open; changing any setting requires Discord admin
+            return {
+                prefixMessage: params ? `!autokeys ${params}` : '!autokeys',
+                adminOnly: params.length > 0
+            };
+        }
+        case 'refreshautokeys':
+            return { prefixMessage: '!refreshautokeys', adminOnly: true };
         case 'add':
             return routeFromPricelistCommand('add', options, true);
         case 'update':

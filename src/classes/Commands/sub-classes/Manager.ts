@@ -14,11 +14,13 @@ import { EFriendRelationship } from 'steam-user';
 import { removeLinkProtocol } from '../functions/utils';
 import Bot from '../../Bot';
 import CommandParser from '../../CommandParser';
+import OptionsCommands from './Options';
 import log from '../../../lib/logger';
 import { pure, testPriceKey } from '../../../lib/tools/export';
 import filterAxiosError from '@tf2autobot/filter-axios-error';
 import { AxiosError } from 'axios';
 import { Entry } from '../../Pricelist';
+import { UnknownDictionaryKnownValues } from '../../../types/common';
 
 // Bot manager commands
 
@@ -563,7 +565,7 @@ export default class ManagerCommands {
             });
     }
 
-    autokeysCommand(steamID: SteamID): void {
+    async autokeysCommand(steamID: SteamID, message = '!autokeys'): Promise<void> {
         const opt = this.bot.options.commands.autokeys;
         if (!opt.enable) {
             if (!this.bot.isAdmin(steamID)) {
@@ -572,11 +574,110 @@ export default class ManagerCommands {
             }
         }
 
+        const afterCommand = message.includes(' ') ? CommandParser.removeCommand(message) : '';
+        const rawParams = afterCommand ? CommandParser.parseParams(afterCommand) : {};
+        const configParts = ManagerCommands.buildAutokeysConfigParts(rawParams);
+
+        if (configParts.length > 0) {
+            if (!this.bot.isAdmin(steamID)) {
+                return this.bot.sendMessage(steamID, '⛔ Only admins can change Autokeys settings.');
+            }
+
+            const optionsCmd = new OptionsCommands(this.bot);
+            const ok = await optionsCmd.updateOptionsCommandAsync(
+                steamID,
+                `!config ${configParts.join('&')}`,
+                { silent: true }
+            );
+            if (!ok) {
+                return;
+            }
+        }
+
         this.bot.sendMessage(
             steamID,
             (isDiscordRedirect(steamID.redirectAnswerTo) ? '/pre2' : '/pre ') +
                 ManagerCommands.generateAutokeysReply(steamID, this.bot)
         );
+    }
+
+    /**
+     * Build !config param fragments for Autokeys from flat or nested command params.
+     */
+    private static buildAutokeysConfigParts(params: UnknownDictionaryKnownValues): string[] {
+        const parts: string[] = [];
+
+        const set = (key: string, value: string | number | boolean): void => {
+            parts.push(`${key}=${value}`);
+        };
+
+        // Flat slash / shorthand keys
+        if (typeof params.enable === 'boolean') {
+            set('autokeys.enable', params.enable);
+        }
+        if (typeof params.minKeys === 'number') {
+            set('autokeys.minKeys', params.minKeys);
+        }
+        if (typeof params.maxKeys === 'number') {
+            set('autokeys.maxKeys', params.maxKeys);
+        }
+        if (typeof params.minRefined === 'number') {
+            set('autokeys.minRefined', params.minRefined);
+        }
+        if (typeof params.maxRefined === 'number') {
+            set('autokeys.maxRefined', params.maxRefined);
+        }
+        if (typeof params.banking === 'boolean') {
+            set('autokeys.banking.enable', params.banking);
+        }
+        if (typeof params.scrapAdjustment === 'boolean') {
+            set('autokeys.scrapAdjustment.enable', params.scrapAdjustment);
+        }
+        if (typeof params.scrapAdjustmentValue === 'number') {
+            set('autokeys.scrapAdjustment.value', params.scrapAdjustmentValue);
+        }
+
+        // Nested: autokeys={...} from parsers that nest
+        const nested = params.autokeys;
+        if (nested && typeof nested === 'object' && !Array.isArray(nested)) {
+            const ak = nested as UnknownDictionaryKnownValues;
+            if (typeof ak.enable === 'boolean') {
+                set('autokeys.enable', ak.enable);
+            }
+            if (typeof ak.minKeys === 'number') {
+                set('autokeys.minKeys', ak.minKeys);
+            }
+            if (typeof ak.maxKeys === 'number') {
+                set('autokeys.maxKeys', ak.maxKeys);
+            }
+            if (typeof ak.minRefined === 'number') {
+                set('autokeys.minRefined', ak.minRefined);
+            }
+            if (typeof ak.maxRefined === 'number') {
+                set('autokeys.maxRefined', ak.maxRefined);
+            }
+            if (ak.banking && typeof ak.banking === 'object' && typeof (ak.banking as { enable?: boolean }).enable === 'boolean') {
+                set('autokeys.banking.enable', (ak.banking as { enable: boolean }).enable);
+            } else if (typeof ak.banking === 'boolean') {
+                set('autokeys.banking.enable', ak.banking);
+            }
+            if (
+                ak.scrapAdjustment &&
+                typeof ak.scrapAdjustment === 'object'
+            ) {
+                const sa = ak.scrapAdjustment as { enable?: boolean; value?: number };
+                if (typeof sa.enable === 'boolean') {
+                    set('autokeys.scrapAdjustment.enable', sa.enable);
+                }
+                if (typeof sa.value === 'number') {
+                    set('autokeys.scrapAdjustment.value', sa.value);
+                }
+            } else if (typeof ak.scrapAdjustment === 'boolean') {
+                set('autokeys.scrapAdjustment.enable', ak.scrapAdjustment);
+            }
+        }
+
+        return parts;
     }
 
     refreshAutokeysCommand(steamID: SteamID): void {

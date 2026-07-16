@@ -1631,6 +1631,19 @@ export const optionsSchema: jsonschema.Schema = {
                 },
                 halt: {
                     $ref: '#/definitions/discord-chat'
+                },
+                unhaltButton: {
+                    type: 'object',
+                    properties: {
+                        enable: {
+                            type: 'boolean'
+                        },
+                        channelId: {
+                            type: 'string',
+                            pattern: '^$|^[0-9]+$'
+                        }
+                    },
+                    additionalProperties: false
                 }
             }
         },

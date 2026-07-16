@@ -541,6 +541,11 @@ export const DEFAULTS: JsonOptions = {
             type: 'PLAYING',
             name: '? No, Halted ⛔',
             status: 'idle'
+        },
+        // When the bot boots in halt mode, post an Unhalt button in Discord
+        unhaltButton: {
+            enable: true,
+            channelId: '' // optional guild text channel; empty = system/first channel, else admin DMs
         }
     },
 
@@ -1693,6 +1698,10 @@ interface InventoryApis {
 interface DiscordChat {
     online?: DiscordChatStatus;
     halt?: DiscordChatStatus;
+    unhaltButton?: {
+        enable?: boolean;
+        channelId?: string;
+    };
 }
 
 interface DiscordChatStatus {

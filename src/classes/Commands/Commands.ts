@@ -188,7 +188,7 @@ export default class Commands {
             } else if (command === 'more') {
                 this.help.moreCommand(steamID, prefix);
             } else if (command === 'autokeys') {
-                this.manager.autokeysCommand(steamID);
+                void this.manager.autokeysCommand(steamID, message);
             } else if (['craftweapon', 'craftweapons', 'uncraftweapon', 'uncraftweapons'].includes(command)) {
                 void this.misc.weaponCommand(
                     steamID,

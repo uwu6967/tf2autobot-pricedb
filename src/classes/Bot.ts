@@ -1379,6 +1379,10 @@ export default class Bot {
                         this.discordBot?.setPresence('online');
                     }
 
+                    if (this.options.discordBotToken && this.discordBot && this.halted) {
+                        void this.discordBot.sendStartupUnhaltButton();
+                    }
+
                     resolve();
                 }
             );

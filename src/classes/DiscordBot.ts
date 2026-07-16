@@ -8,7 +8,11 @@ import {
     Snowflake,
     ActivityType,
     TextChannel,
-    Interaction
+    Interaction,
+    ActionRowBuilder,
+    ButtonBuilder,
+    ButtonStyle,
+    ChannelType
 } from 'discord.js';
 import log from '../lib/logger';
 import Options from './Options';
@@ -43,6 +47,8 @@ export default class DiscordBot {
         this.prefix = this.bot.options.miscSettings?.prefixes?.discord ?? this.prefix;
     }
 
+    private static readonly UNHALT_BUTTON_ID = 'tf2autobot:unhalt';
+
     public async start(): Promise<void> {
         try {
             await this.client.login(this.options.discordBotToken);
@@ -67,10 +73,91 @@ export default class DiscordBot {
         }
     }
 
+    /**
+     * After the bot finishes booting in halt mode, post an Unhalt button in Discord.
+     */
+    public async sendStartupUnhaltButton(): Promise<void> {
+        const cfg = this.options.discordChat?.unhaltButton;
+        if (cfg?.enable === false) {
+            return;
+        }
+
+        if (!this.bot.isHalted) {
+            return;
+        }
+
+        const content =
+            '🛑 Bot started in **halt** mode (not trading, listings removed).\n' +
+            'Click **Unhalt** when you are ready to go live.';
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId(DiscordBot.UNHALT_BUTTON_ID)
+                .setLabel('Unhalt')
+                .setStyle(ButtonStyle.Success)
+        );
+        const payload = { content, components: [row] };
+
+        try {
+            const channelId = cfg?.channelId?.trim();
+            if (channelId) {
+                const channel = await this.client.channels.fetch(channelId);
+                if (channel && channel.isTextBased() && !channel.isDMBased()) {
+                    await channel.send(payload);
+                    log.info(`Sent startup Unhalt button to channel ${channelId}`);
+                    return;
+                }
+                log.warn(`discordChat.unhaltButton.channelId ${channelId} is not a usable text channel`);
+            }
+
+            // Prefer the guild system / first text channel so it shows "in chat"
+            for (const guild of this.client.guilds.cache.values()) {
+                const preferred =
+                    guild.systemChannel ??
+                    guild.channels.cache.find(
+                        ch =>
+                            ch.type === ChannelType.GuildText &&
+                            ch.viewable &&
+                            ch.permissionsFor(guild.members.me)?.has('SendMessages')
+                    );
+
+                if (preferred && preferred.isTextBased()) {
+                    await preferred.send(payload);
+                    log.info(`Sent startup Unhalt button to #${preferred.name} in ${guild.name}`);
+                    return;
+                }
+            }
+
+            // Fallback: DM admins
+            for (const admin of this.admins) {
+                const user = await this.client.users.fetch(admin.discordID).catch(() => null);
+                if (!user || user.bot) {
+                    continue;
+                }
+                await user.send(payload).catch(err => {
+                    log.warn(`Failed to DM Unhalt button to admin ${admin.discordID}:`, err);
+                });
+            }
+            log.info('Sent startup Unhalt button via admin DMs (no guild channel available)');
+        } catch (err) {
+            log.error('Failed to send startup Unhalt button:', err);
+        }
+    }
+
     private async registerSlashCommands(): Promise<void> {
         const definitions = getSlashCommandDefinitions();
+
+        // Guild commands update instantly (global can take up to ~1 hour to propagate).
+        const guilds = [...this.client.guilds.cache.values()];
+        for (const guild of guilds) {
+            await guild.commands.set(definitions);
+            log.info(
+                `Registered ${definitions.length} Discord slash commands for guild ${guild.name} (${guild.id})`
+            );
+        }
+
+        // Keep global in sync for DMs / new guilds (may lag).
         await this.client.application.commands.set(definitions);
-        log.info(`Registered ${definitions.length} Discord slash commands`);
+        log.info(`Registered ${definitions.length} Discord slash commands (global)`);
     }
 
     public stop(): void {
@@ -139,6 +226,11 @@ export default class DiscordBot {
     }
 
     private async onInteraction(interaction: Interaction): Promise<void> {
+        if (interaction.isButton()) {
+            await this.onButtonInteraction(interaction);
+            return;
+        }
+
         if (interaction.isAutocomplete()) {
             if (interaction.commandName !== 'run') {
                 return;
@@ -206,6 +298,55 @@ export default class DiscordBot {
             } else {
                 await interaction.reply({ content: errText, ephemeral: true }).catch(() => undefined);
             }
+        }
+    }
+
+    private async onButtonInteraction(interaction: Interaction): Promise<void> {
+        if (!interaction.isButton()) {
+            return;
+        }
+
+        if (interaction.customId !== DiscordBot.UNHALT_BUTTON_ID) {
+            return;
+        }
+
+        if (!this.isDiscordAdmin(interaction.user.id)) {
+            await interaction.reply({
+                content: '⛔ Only admins can unhalt the bot.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        if (!this.bot.isReady) {
+            await interaction.reply({ content: '🛑 Bot is still booting, please wait.', ephemeral: true });
+            return;
+        }
+
+        if (!this.bot.isHalted) {
+            await interaction.update({
+                content: '✅ Bot is already online (not halted).',
+                components: []
+            });
+            return;
+        }
+
+        try {
+            await interaction.deferUpdate();
+            const recreateFailed = await this.bot.unhalt();
+            const note = recreateFailed
+                ? '\n⚠️ Listings recreate reported errors — check bot logs.'
+                : '';
+            await interaction.editReply({
+                content: `✅ Unhalted by <@${interaction.user.id}> — bot is live.${note}`,
+                components: []
+            });
+            log.info(`Discord Unhalt button pressed by ${interaction.user.tag} (${interaction.user.id})`);
+        } catch (err) {
+            log.error('Failed handling Unhalt button:', err);
+            await interaction
+                .followUp({ content: `❌ Failed to unhalt: ${String(err)}`, ephemeral: true })
+                .catch(() => undefined);
         }
     }
 

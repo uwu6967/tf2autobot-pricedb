@@ -7,7 +7,13 @@ const CANONICAL_PARAM_KEYS: Readonly<Record<string, string>> = {
     autopricesell: 'autopriceSell',
     autopricebuy: 'autopriceBuy',
     ispartialpriced: 'isPartialPriced',
-    outputquality: 'outputQuality'
+    outputquality: 'outputQuality',
+    minkeys: 'minKeys',
+    maxkeys: 'maxKeys',
+    minrefined: 'minRefined',
+    maxrefined: 'maxRefined',
+    scrapadjustment: 'scrapAdjustment',
+    scrapadjustmentvalue: 'scrapAdjustmentValue'
 };
 
 /**
@@ -25,8 +31,16 @@ const CASE_INSENSITIVE_ROOTS = new Set([
     'autopricesell',
     'autopricebuy',
     'enabled',
+    'enable',
     'min',
     'max',
+    'minkeys',
+    'maxkeys',
+    'minrefined',
+    'maxrefined',
+    'banking',
+    'scrapadjustment',
+    'scrapadjustmentvalue',
     'group',
     'promoted',
     'buy',

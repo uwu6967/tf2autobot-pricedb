@@ -849,6 +849,19 @@ export default class OptionsCommands {
     }
 
     updateOptionsCommand(steamID: SteamID, message: string): void {
+        void this.updateOptionsCommandAsync(steamID, message);
+    }
+
+    /**
+     * Apply !config-style options updates. Returns true on success.
+     * When silent is true, skips the generic "✅ Updated options!" reply (errors still send).
+     */
+    updateOptionsCommandAsync(
+        steamID: SteamID,
+        message: string,
+        opts?: { silent?: boolean }
+    ): Promise<boolean> {
+        const silent = opts?.silent === true;
         const opt = this.bot.options;
         if (
             message.includes('painted.An Extraordinary Abundance of Tinge') ||
@@ -872,7 +885,7 @@ export default class OptionsCommands {
                 log.warn(msg);
             }
 
-            return;
+            return Promise.resolve(false);
         }
 
         const knownParams = params as JsonOptions;
@@ -900,10 +913,11 @@ export default class OptionsCommands {
                 log.error(msg);
             }
 
-            return;
+            return Promise.resolve(false);
         }
 
-        fsp.writeFile(optionsPath, JSON.stringify(saveOptions, null, 4), { encoding: 'utf8' })
+        return fsp
+            .writeFile(optionsPath, JSON.stringify(saveOptions, null, 4), { encoding: 'utf8' })
             .then(() => {
                 deepMerge(opt, saveOptions);
                 const msg = '✅ Updated options!';
@@ -968,23 +982,27 @@ export default class OptionsCommands {
                     this.bot.listings.checkByPriceKey({ priceKey: '5021;6' });
                 }
 
-                if (steamID) {
-                    return this.bot.sendMessage(steamID, msg);
-                } else {
-                    return log.info(msg);
+                if (!silent) {
+                    if (steamID) {
+                        this.bot.sendMessage(steamID, msg);
+                    } else {
+                        log.info(msg);
+                    }
                 }
+
+                return true;
             })
             .catch(err => {
                 const errStringify = JSON.stringify(err);
                 const errMessage = errStringify === '' ? (err as Error)?.message : errStringify;
-                const msg = `❌ Error saving options file to disk: ${errMessage}`;
+                const failMsg = `❌ Error saving options file to disk: ${errMessage}`;
                 if (steamID) {
-                    this.bot.sendMessage(steamID, msg);
+                    this.bot.sendMessage(steamID, failMsg);
                 } else {
-                    log.error(msg);
+                    log.error(failMsg);
                 }
 
-                return;
+                return false;
             });
     }
 
