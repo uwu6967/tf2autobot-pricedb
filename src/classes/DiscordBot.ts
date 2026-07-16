@@ -7,14 +7,15 @@ import {
     DiscordAPIError,
     Snowflake,
     ActivityType,
-    ApplicationCommandType,
-    TextChannel
+    TextChannel,
+    Interaction
 } from 'discord.js';
 import log from '../lib/logger';
 import Options from './Options';
 import Bot from './Bot';
 import SteamID from 'steamid';
-import { uptime } from '../lib/tools/time';
+import { DiscordRedirectTarget } from '../lib/discordRedirect';
+import { BOT_COMMAND_NAMES, getSlashCommandDefinitions, resolveSlashRoute } from './DiscordSlashCommands';
 
 export default class DiscordBot {
     readonly client: Client;
@@ -37,6 +38,7 @@ export default class DiscordBot {
         /* eslint-disable */
         this.client.on('ready', this.onClientReady.bind(this));
         this.client.on('messageCreate', async message => this.onMessage(message));
+        this.client.on('interactionCreate', async interaction => this.onInteraction(interaction));
         /* eslint-enable */
         this.prefix = this.bot.options.miscSettings?.prefixes?.discord ?? this.prefix;
     }
@@ -44,23 +46,7 @@ export default class DiscordBot {
     public async start(): Promise<void> {
         try {
             await this.client.login(this.options.discordBotToken);
-            await this.client.application.commands.set([
-                {
-                    name: 'uptime',
-                    description: 'Show bot uptime',
-                    type: ApplicationCommandType.ChatInput
-                }
-            ]);
-
-            /* eslint-disable */
-            this.client.on('interactionCreate', async interaction => {
-                if (!interaction.isChatInputCommand()) return;
-
-                if (interaction.commandName === 'uptime') {
-                    await interaction.reply({ content: uptime() });
-                }
-            });
-            /* eslint-enable */
+            await this.registerSlashCommands();
         } catch (err) {
             const error = err as DiscordAPIError;
 
@@ -81,6 +67,12 @@ export default class DiscordBot {
         }
     }
 
+    private async registerSlashCommands(): Promise<void> {
+        const definitions = getSlashCommandDefinitions();
+        await this.client.application.commands.set(definitions);
+        log.info(`Registered ${definitions.length} Discord slash commands`);
+    }
+
     public stop(): void {
         log.info('Logging out from Discord...');
         void this.client.destroy();
@@ -95,9 +87,15 @@ export default class DiscordBot {
             return; // Ignore webhook messages
         }
 
-        if (!message.content.startsWith(this.prefix)) {
-            return; // Ignore message that not start with !
+        if (!message.content.startsWith(this.prefix) && !message.content.startsWith('/')) {
+            return; // Ignore message that not start with configured prefix or /
         }
+
+        // Allow "/" as an alternate Discord text-command prefix (same as !)
+        const content =
+            message.content.startsWith('/') && !message.content.startsWith(this.prefix)
+                ? this.prefix + message.content.slice(1)
+                : message.content;
 
         log.info(
             `Got new message ${String(message.content)} from ${message.author.tag} (${String(message.author.id)})`
@@ -113,13 +111,13 @@ export default class DiscordBot {
                 // Will return default invalid value
                 const dummySteamID = new SteamID(null);
                 dummySteamID.redirectAnswerTo = message;
-                await this.bot.handler.onMessage(dummySteamID, message.content);
+                await this.bot.handler.onMessage(dummySteamID, content);
                 return;
             }
 
             const adminID = this.getAdminBy(message.author.id);
             adminID.redirectAnswerTo = message;
-            await this.bot.handler.onMessage(adminID, message.content);
+            await this.bot.handler.onMessage(adminID, content);
         } catch (err) {
             log.error(err);
             (message.channel as TextChannel)
@@ -140,7 +138,78 @@ export default class DiscordBot {
         }
     }
 
-    public sendAnswer(origMessage: Message, messageToSend: string): void {
+    private async onInteraction(interaction: Interaction): Promise<void> {
+        if (interaction.isAutocomplete()) {
+            if (interaction.commandName !== 'run') {
+                return;
+            }
+
+            const focused = interaction.options.getFocused().toLowerCase();
+            const choices = BOT_COMMAND_NAMES.filter(name => name.startsWith(focused) || focused === '').slice(0, 25);
+            await interaction.respond(choices.map(name => ({ name, value: name })));
+            return;
+        }
+
+        if (!interaction.isChatInputCommand()) {
+            return;
+        }
+
+        const route = resolveSlashRoute(interaction.commandName, {
+            getString: name => interaction.options.getString(name),
+            getInteger: name => interaction.options.getInteger(name),
+            getNumber: name => interaction.options.getNumber(name),
+            getBoolean: name => interaction.options.getBoolean(name)
+        });
+
+        if (!route) {
+            await interaction.reply({
+                content:
+                    '❌ Missing or invalid options. For `/add` and `/update` you need **lookup**, **value**, and **intent** (add only).',
+                ephemeral: true
+            });
+            return;
+        }
+
+        log.info(`Got slash /${interaction.commandName} from ${interaction.user.tag} (${interaction.user.id})`);
+
+        if (!this.bot.isReady) {
+            await interaction.reply({ content: '🛑 The bot is still booting up, please wait', ephemeral: true });
+            return;
+        }
+
+        if (route.adminOnly && !this.isDiscordAdmin(interaction.user.id)) {
+            await interaction.reply({
+                content: '⛔ That command is admin-only. Your Discord ID must be listed in ADMINS in the bot `.env`.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        try {
+            await interaction.deferReply();
+
+            if (route.adminOnly) {
+                const adminID = this.getAdminBy(interaction.user.id);
+                adminID.redirectAnswerTo = interaction;
+                await this.bot.handler.onMessage(adminID, route.prefixMessage);
+                return;
+            }
+
+            const dummySteamID = new SteamID(null);
+            dummySteamID.redirectAnswerTo = interaction;
+            await this.bot.handler.onMessage(dummySteamID, route.prefixMessage);
+        } catch (err) {
+            log.error(err);
+            const errText = `❌ Error:\n${JSON.stringify(err)}`;
+            if (interaction.deferred || interaction.replied) {
+                await interaction.editReply({ content: errText }).catch(() => undefined);
+            } else {
+                await interaction.reply({ content: errText, ephemeral: true }).catch(() => undefined);
+            }
+        }
+    }
+
+    public sendAnswer(origMessage: DiscordRedirectTarget, messageToSend: string): void {
         messageToSend = messageToSend.trim();
         const formattedMessage = DiscordBot.reformat(messageToSend);
 
@@ -156,14 +225,49 @@ export default class DiscordBot {
                         partialMessage += '\n' + line;
                     }
                 } else {
-                    this.sendMessage(origMessage, partialMessage);
-                    partialMessage = line; // Error is still possible if any line is longer than limit
+                    this.sendAnswerPart(origMessage, partialMessage);
+                    partialMessage = line;
                 }
             }
-            this.sendMessage(origMessage, partialMessage);
+            this.sendAnswerPart(origMessage, partialMessage);
         } else {
-            this.sendMessage(origMessage, formattedMessage); // TODO: normal parsing of markup things
+            this.sendAnswerPart(origMessage, formattedMessage);
         }
+    }
+
+    private sendAnswerPart(origMessage: DiscordRedirectTarget, message: string): void {
+        if (origMessage instanceof Message) {
+            this.sendMessage(origMessage, message);
+            return;
+        }
+
+        const interaction = origMessage;
+        if (message.startsWith('\n')) {
+            message = '.' + message;
+        }
+        if (message.endsWith('\n')) {
+            message = message + '.';
+        }
+
+        const payload = { content: message.slice(0, this.MAX_MESSAGE_LENGTH) };
+
+        if (!interaction.deferred && !interaction.replied) {
+            void interaction.reply(payload).then(() => {
+                log.info(`Slash reply to ${interaction.user.tag} (${interaction.user.id}): ${message}`);
+            });
+            return;
+        }
+
+        if (interaction.deferred && !interaction.replied) {
+            void interaction.editReply(payload).then(() => {
+                log.info(`Slash reply to ${interaction.user.tag} (${interaction.user.id}): ${message}`);
+            });
+            return;
+        }
+
+        void interaction.followUp(payload).then(() => {
+            log.info(`Slash follow-up to ${interaction.user.tag} (${interaction.user.id}): ${message}`);
+        });
     }
 
     private sendMessage(origMessage: Message, message: string): void {

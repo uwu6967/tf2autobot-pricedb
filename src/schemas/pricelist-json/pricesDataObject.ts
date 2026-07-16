@@ -21,6 +21,12 @@ export const pricesDataObject: jsonschema.Schema = {
                     autoprice: {
                         type: 'boolean'
                     },
+                    autopriceSell: {
+                        type: 'boolean'
+                    },
+                    autopriceBuy: {
+                        type: 'boolean'
+                    },
                     max: {
                         type: 'number'
                     },

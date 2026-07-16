@@ -2,6 +2,63 @@ import { setProperty } from 'dot-prop';
 import { UnknownDictionaryKnownValues } from '../types/common';
 import { parseJSON } from '../lib/helpers';
 
+/** Map lowercased param keys to the canonical camelCase names used in code / EntryData. */
+const CANONICAL_PARAM_KEYS: Readonly<Record<string, string>> = {
+    autopricesell: 'autopriceSell',
+    autopricebuy: 'autopriceBuy',
+    ispartialpriced: 'isPartialPriced',
+    outputquality: 'outputQuality'
+};
+
+/**
+ * Pricelist / listing keys that should be matched case-insensitively.
+ * Nested config keys like highValue.sheens keep their original casing.
+ */
+const CASE_INSENSITIVE_ROOTS = new Set([
+    'sku',
+    'id',
+    'item',
+    'name',
+    'defindex',
+    'intent',
+    'autoprice',
+    'autopricesell',
+    'autopricebuy',
+    'enabled',
+    'min',
+    'max',
+    'group',
+    'promoted',
+    'buy',
+    'sell',
+    'note',
+    'ispartialpriced',
+    'removenote',
+    'removebuynote',
+    'removesellnote',
+    'resetgroup',
+    'withgroup',
+    'withoutgroup',
+    'all'
+]);
+
+function canonicalizeParamKey(rawKey: string): string {
+    const trimmed = rawKey.trim();
+    const lower = trimmed.toLowerCase();
+
+    if (CANONICAL_PARAM_KEYS[lower]) {
+        return CANONICAL_PARAM_KEYS[lower];
+    }
+
+    const root = lower.split('.')[0];
+    if (CASE_INSENSITIVE_ROOTS.has(root)) {
+        return lower;
+    }
+
+    // Preserve camelCase for config keys (e.g. highValue.sheens)
+    return trimmed;
+}
+
 export default class CommandParser {
     static getCommand(message: string, prefix: string): string | null {
         if (message.startsWith(prefix)) {
@@ -33,7 +90,9 @@ export default class CommandParser {
                 // eslint-disable-next-line @typescript-eslint/no-unsafe-assignment
                 let value = params[key];
 
-                if (key !== 'sku') {
+                const canonicalKey = canonicalizeParamKey(key);
+
+                if (canonicalKey !== 'sku') {
                     const lowerCase = (value as string).toLowerCase();
                     if (/^-?\d+$/.test(lowerCase)) {
                         value = parseInt(lowerCase);
@@ -55,7 +114,7 @@ export default class CommandParser {
                     }
                 }
 
-                setProperty(parsed, key.trim(), value);
+                setProperty(parsed, canonicalKey, value);
             }
         }
 

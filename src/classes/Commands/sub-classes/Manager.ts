@@ -8,7 +8,7 @@ import * as timersPromises from 'timers/promises';
 import path from 'path';
 import child from 'child_process';
 import dayjs from 'dayjs';
-import { Message as DiscordMessage } from 'discord.js';
+import { isDiscordRedirect } from '../../../lib/discordRedirect';
 import { EPersonaState } from 'steam-user';
 import { EFriendRelationship } from 'steam-user';
 import { removeLinkProtocol } from '../functions/utils';
@@ -574,7 +574,7 @@ export default class ManagerCommands {
 
         this.bot.sendMessage(
             steamID,
-            (steamID.redirectAnswerTo instanceof DiscordMessage ? '/pre2' : '/pre ') +
+            (isDiscordRedirect(steamID.redirectAnswerTo) ? '/pre2' : '/pre ') +
                 ManagerCommands.generateAutokeysReply(steamID, this.bot)
         );
     }

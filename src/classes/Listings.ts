@@ -995,9 +995,11 @@ export default class Listings {
             const pricedbStoreUrl = this.bot.getPricedbStoreUrl();
             const pricedbItemUrl = `https://crit.tf/item/${entry.sku}`;
 
+            const displayName = entry.name ?? entry.id ?? entry.sku;
+
             return details
                 .replace(/%price%/g, isShowBoldOnPrice ? boldDetails(price, style) : price)
-                .replace(/%name%/g, entry.id ?? entry.name)
+                .replace(/%name%/g, displayName)
                 .replace(/%ecp_item%/g, ecpString)
                 .replace(/%max_stock%/g, isShowBoldOnMaxStock ? boldDetails(maxStock, style) : maxStock)
                 .replace(/%current_stock%/g, isShowBoldOnCurrentStock ? boldDetails(currentStock, style) : currentStock)

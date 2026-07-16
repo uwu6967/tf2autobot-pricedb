@@ -2,7 +2,7 @@ import SteamID from 'steamid';
 import pluralize from 'pluralize';
 import TradeOfferManager, { Meta, OfferData, OurTheirItemsDict } from '@tf2autobot/tradeoffer-manager';
 import Currencies from '@tf2autobot/tf2-currencies';
-import { Message as DiscordMessage } from 'discord.js';
+import { isDiscordRedirect } from '../../../lib/discordRedirect';
 import { UnknownDictionaryKnownValues } from '../../../types/common';
 import SKU from '@tf2autobot/tf2-sku';
 import Bot from '../../Bot';
@@ -386,7 +386,7 @@ export default class ReviewCommands {
             let body = JSON.stringify(show, null, 2);
 
             if (
-                (steamID.redirectAnswerTo instanceof DiscordMessage && body.length > 2000) ||
+                (isDiscordRedirect(steamID.redirectAnswerTo) && body.length > 2000) ||
                 (steamID.type !== 0 && body.length > 500)
             ) {
                 body = JSON.stringify(show);

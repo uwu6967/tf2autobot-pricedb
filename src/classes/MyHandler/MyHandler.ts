@@ -34,6 +34,7 @@ import Autokeys from '../Autokeys/Autokeys';
 
 import { Paths } from '../../resources/paths';
 import log from '../../lib/logger';
+import { getDiscordUserId } from '../../lib/discordRedirect';
 import * as files from '../../lib/files';
 import { exponentialBackoff } from '../../lib/helpers';
 
@@ -521,17 +522,14 @@ export default class MyHandler extends Handler {
             this.recentlySentMessage[steamID64] =
                 (this.recentlySentMessage[steamID64] === undefined ? 0 : this.recentlySentMessage[steamID64]) + 1;
         } else if (steamID instanceof SteamID && steamID.redirectAnswerTo) {
-            if (
-                this.recentlySentMessage[steamID.redirectAnswerTo.author.id] !== undefined &&
-                this.recentlySentMessage[steamID.redirectAnswerTo.author.id] >= 1
-            ) {
+            const discordUserId = getDiscordUserId(steamID.redirectAnswerTo);
+            if (this.recentlySentMessage[discordUserId] !== undefined && this.recentlySentMessage[discordUserId] >= 1) {
                 return;
             }
 
-            this.recentlySentMessage[steamID.redirectAnswerTo.author.id] =
-                (this.recentlySentMessage[steamID.redirectAnswerTo.author.id] === undefined
-                    ? 0
-                    : this.recentlySentMessage[steamID.redirectAnswerTo.author.id]) + 1;
+            this.recentlySentMessage[discordUserId] =
+                (this.recentlySentMessage[discordUserId] === undefined ? 0 : this.recentlySentMessage[discordUserId]) +
+                1;
         }
 
         await this.commands.processMessage(steamID, message);

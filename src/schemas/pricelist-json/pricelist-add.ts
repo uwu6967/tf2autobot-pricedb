@@ -25,6 +25,14 @@ export const addSchema: jsonschema.Schema = {
             // if the item is autopriced or not
             type: 'boolean'
         },
+        autopriceSell: {
+            // Manual buy, live sell from PriceDB
+            type: 'boolean'
+        },
+        autopriceBuy: {
+            // Manual sell, live buy from PriceDB
+            type: 'boolean'
+        },
         min: {
             // minimum stock
             type: 'integer',

@@ -1,5 +1,6 @@
 declare module 'steamid' {
-    import { Message as DiscordMessage, Snowflake } from 'discord.js';
+    import { Message as DiscordMessage, ChatInputCommandInteraction, Snowflake } from 'discord.js';
+import { DiscordRedirectTarget } from '../lib/discordRedirect';
 
     class SteamID {
         constructor(input: string);
@@ -20,7 +21,7 @@ declare module 'steamid' {
 
         discordID: Snowflake | undefined;
 
-        redirectAnswerTo: DiscordMessage | undefined;
+        redirectAnswerTo: DiscordRedirectTarget | undefined;
     }
 
     export = SteamID;

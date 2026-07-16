@@ -60,10 +60,12 @@ export default class PricelistManagerCommands {
             params.buy.keys = params.buy.keys || 0;
             params.buy.metal = params.buy.metal || 0;
 
-            if (params.autoprice === undefined) {
+            // Keep autoprice when using partial live modes
+            if (params.autoprice === undefined && params.autopriceSell !== true && params.autopriceBuy !== true) {
                 params.autoprice = false;
             }
         } else if (typeof params.buy !== 'object' && typeof params.sell === 'object') {
+            // Placeholder buy; overwritten from PriceDB when autopriceBuy=true
             params['buy'] = {
                 keys: 0,
                 metal: 0
@@ -74,10 +76,11 @@ export default class PricelistManagerCommands {
             params.sell.keys = params.sell.keys || 0;
             params.sell.metal = params.sell.metal || 0;
 
-            if (params.autoprice === undefined) {
+            if (params.autoprice === undefined && params.autopriceSell !== true && params.autopriceBuy !== true) {
                 params.autoprice = false;
             }
         } else if (typeof params.sell !== 'object' && typeof params.buy === 'object') {
+            // Placeholder sell; overwritten from PriceDB when autopriceSell=true
             params['sell'] = {
                 keys: 0,
                 metal: 0
@@ -138,6 +141,11 @@ export default class PricelistManagerCommands {
 
         if (params.autoprice === undefined) {
             params.autoprice = true;
+        }
+
+        const autopriceModeError = this.normalizePartialAutopriceParams(params, true);
+        if (autopriceModeError) {
+            return this.bot.sendMessage(steamID, autopriceModeError);
         }
 
         if (params.isPartialPriced === undefined) {
@@ -1035,12 +1043,13 @@ export default class PricelistManagerCommands {
             params.buy.keys = params.buy.keys || 0;
             params.buy.metal = params.buy.metal || 0;
 
-            if (params.autoprice === undefined) {
+            if (params.autoprice === undefined && params.autopriceSell !== true && params.autopriceBuy !== true) {
                 params.autoprice = false;
             }
 
             params.isPartialPriced = false;
         } else if (typeof params.buy !== 'object' && typeof params.sell === 'object') {
+            // Keep current buy until PriceDB refresh when autopriceBuy=true
             params['buy'] = {
                 keys: itemEntry.buy.keys,
                 metal: itemEntry.buy.metal
@@ -1051,12 +1060,13 @@ export default class PricelistManagerCommands {
             params.sell.keys = params.sell.keys || 0;
             params.sell.metal = params.sell.metal || 0;
 
-            if (params.autoprice === undefined) {
+            if (params.autoprice === undefined && params.autopriceSell !== true && params.autopriceBuy !== true) {
                 params.autoprice = false;
             }
 
             params.isPartialPriced = false;
         } else if (typeof params.sell !== 'object' && typeof params.buy === 'object') {
+            // Keep current sell until PriceDB refresh when autopriceSell=true
             params['sell'] = {
                 keys: itemEntry.sell.keys,
                 metal: itemEntry.sell.metal
@@ -1132,6 +1142,11 @@ export default class PricelistManagerCommands {
             }
 
             entryData[property] = params[property];
+        }
+
+        const autopriceModeError = this.normalizePartialAutopriceParams(entryData, true);
+        if (autopriceModeError) {
+            return this.bot.sendMessage(steamID, autopriceModeError);
         }
 
         this.bot.pricelist
@@ -1568,6 +1583,56 @@ export default class PricelistManagerCommands {
         }
     }
 
+    /**
+     * Normalize autopriceSell / autopriceBuy / autoprice interaction on command params.
+     * Returns an error message, or null if valid.
+     */
+    private normalizePartialAutopriceParams(
+        params: UnknownDictionaryKnownValues | EntryData,
+        requireManualSide: boolean
+    ): string | null {
+        if (params.autopriceSell !== undefined && typeof params.autopriceSell !== 'boolean') {
+            return '❌ "autopriceSell" must be either "true" or "false".';
+        }
+
+        if (params.autopriceBuy !== undefined && typeof params.autopriceBuy !== 'boolean') {
+            return '❌ "autopriceBuy" must be either "true" or "false".';
+        }
+
+        if (params.autopriceSell === true && params.autopriceBuy === true) {
+            return '❌ Use only one of autopriceSell or autopriceBuy (or full autoprice).';
+        }
+
+        if (params.autopriceSell === true) {
+            params.autoprice = false;
+            params.autopriceBuy = false;
+
+            if (requireManualSide && typeof params.buy !== 'object') {
+                return '❌ autopriceSell requires a manual buy price (buy.keys / buy.metal).';
+            }
+        } else if (params.autopriceSell === undefined) {
+            params.autopriceSell = false;
+        }
+
+        if (params.autopriceBuy === true) {
+            params.autoprice = false;
+            params.autopriceSell = false;
+
+            if (requireManualSide && typeof params.sell !== 'object') {
+                return '❌ autopriceBuy requires a manual sell price (sell.keys / sell.metal).';
+            }
+        } else if (params.autopriceBuy === undefined) {
+            params.autopriceBuy = false;
+        }
+
+        if (params.autoprice === true) {
+            params.autopriceSell = false;
+            params.autopriceBuy = false;
+        }
+
+        return null;
+    }
+
     private generateUpdateReply(isPremium: boolean, oldEntry: Entry, newEntry: Entry): string {
         const keyPrice = this.bot.pricelist.getKeyPrice;
         const amount = this.bot.inventoryManager.getInventory.getAmount({
@@ -1605,6 +1670,16 @@ export default class PricelistManagerCommands {
                 oldEntry.autoprice !== newEntry.autoprice
                     ? `${oldEntry.autoprice ? '✅' : '❌'} → ${newEntry.autoprice ? '✅' : '❌'}`
                     : `${newEntry.autoprice ? '✅' : '❌'}`
+            }` +
+            `\n🔄 Autoprice sell: ${
+                oldEntry.autopriceSell !== newEntry.autopriceSell
+                    ? `${oldEntry.autopriceSell ? '✅' : '❌'} → ${newEntry.autopriceSell ? '✅' : '❌'}`
+                    : `${newEntry.autopriceSell ? '✅' : '❌'}`
+            }` +
+            `\n🔄 Autoprice buy: ${
+                oldEntry.autopriceBuy !== newEntry.autopriceBuy
+                    ? `${oldEntry.autopriceBuy ? '✅' : '❌'} → ${newEntry.autopriceBuy ? '✅' : '❌'}`
+                    : `${newEntry.autopriceBuy ? '✅' : '❌'}`
             }` +
             `\n½🔄 isPartialPriced: ${
                 oldEntry.isPartialPriced !== newEntry.isPartialPriced
@@ -2488,6 +2563,8 @@ function generateAddedReply(bot: Bot, isPremium: boolean, entry: Entry): string 
         `\n📦 Stock: ${amount} | Min: ${entry.min} | Max: ${entry.max}` +
         `\n📋 Enabled: ${entry.enabled ? '✅' : '❌'}` +
         `\n🔄 Autoprice: ${entry.autoprice ? '✅' : '❌'}` +
+        `\n🔄 Autoprice sell: ${entry.autopriceSell ? '✅' : '❌'}` +
+        `\n🔄 Autoprice buy: ${entry.autopriceBuy ? '✅' : '❌'}` +
         `\n½🔄 isPartialPriced: ${entry.isPartialPriced ? '✅' : '❌'}` +
         (isPremium ? `\n📢 Promoted: ${entry.promoted === 1 ? '✅' : '❌'}` : '') +
         `\n🔰 Group: ${entry.group}` +

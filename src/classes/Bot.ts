@@ -22,7 +22,7 @@ import * as files from '../lib/files';
 
 import jwt from 'jsonwebtoken';
 import DiscordBot from './DiscordBot';
-import { Message as DiscordMessage } from 'discord.js';
+import { isDiscordRedirect } from '../lib/discordRedirect';
 
 import InventoryManager from './InventoryManager';
 import Pricelist, { Entry, EntryData, PricesDataObject } from './Pricelist';
@@ -1755,7 +1755,7 @@ export default class Bot {
     sendMessage(steamID: SteamID | string, message: string): void {
         if (steamID instanceof SteamID && steamID.redirectAnswerTo) {
             const origMessage = steamID.redirectAnswerTo;
-            if (origMessage instanceof DiscordMessage && this.discordBot) {
+            if (isDiscordRedirect(origMessage) && this.discordBot) {
                 this.discordBot.sendAnswer(origMessage, message);
             } else {
                 log.error(`Failed to send message, broken redirect:`, origMessage);
