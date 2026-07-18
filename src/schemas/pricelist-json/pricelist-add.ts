@@ -62,6 +62,18 @@ export const addSchema: jsonschema.Schema = {
             type: 'integer',
             minimum: 1
         },
+        minBuy: {
+            $ref: 'tf2-currencies'
+        },
+        maxBuy: {
+            $ref: 'tf2-currencies'
+        },
+        minSell: {
+            $ref: 'tf2-currencies'
+        },
+        maxSell: {
+            $ref: 'tf2-currencies'
+        },
         promoted: {
             // 0 = not promote, 1 = promote item (Sell only)
             type: 'integer',

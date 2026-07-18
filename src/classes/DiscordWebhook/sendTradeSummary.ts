@@ -148,7 +148,7 @@ export default async function sendTradeSummary(
                     (misc.showQuickLinks ? `${quickLinks(t.replace.specialChar(details.personaName), links)}\n` : '\n'),
                 fields: [
                     {
-                        name: '__Item list__',
+                        name: '__Details__',
                         value: itemList.replace(/@/g, '')
                     },
                     {
@@ -213,7 +213,7 @@ export default async function sendTradeSummary(
         // first get __Status__ element
         const statusElement = acceptedTradeSummary.embeds[0].fields.pop();
 
-        // now remove __Item list__, so now it should be empty
+        // now remove __Details__, so now it should be empty
         acceptedTradeSummary.embeds[0].fields.length = 0;
 
         const separate = itemList.split('@');
@@ -224,7 +224,7 @@ export default async function sendTradeSummary(
         separate.forEach((sentence, i) => {
             if ((newSentences.length >= 800 || i === separateCount - 1) && !(j > 4)) {
                 acceptedTradeSummary.embeds[0].fields.push({
-                    name: `__Item list ${j}__`,
+                    name: `__Details ${j}__`,
                     value: newSentences.replace(/@/g, '')
                 });
 

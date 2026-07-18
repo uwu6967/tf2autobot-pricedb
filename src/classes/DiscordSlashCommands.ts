@@ -216,7 +216,7 @@ function pricelistListingOptions(intentRequired: boolean) {
         },
         {
             name: 'autoprice',
-            description: 'Live buy+sell from PriceDB (ignored if autopricesell/autopricebuy is on)',
+            description: 'Live PriceDB (sell-only→sell+buy0; buy-only→buy+sell0; bank→both)',
             type: ApplicationCommandOptionType.Boolean as const,
             required: false
         },
@@ -256,6 +256,62 @@ function pricelistListingOptions(intentRequired: boolean) {
         {
             name: 'buy_metal',
             description: 'Manual buy price — ref',
+            type: ApplicationCommandOptionType.Number as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'min_sell_keys',
+            description: 'Sell price floor — keys (live prices won’t go below)',
+            type: ApplicationCommandOptionType.Integer as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'min_sell_metal',
+            description: 'Sell price floor — ref',
+            type: ApplicationCommandOptionType.Number as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'max_sell_keys',
+            description: 'Sell price ceiling — keys (live prices won’t go above)',
+            type: ApplicationCommandOptionType.Integer as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'max_sell_metal',
+            description: 'Sell price ceiling — ref',
+            type: ApplicationCommandOptionType.Number as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'min_buy_keys',
+            description: 'Buy price floor — keys',
+            type: ApplicationCommandOptionType.Integer as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'min_buy_metal',
+            description: 'Buy price floor — ref',
+            type: ApplicationCommandOptionType.Number as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'max_buy_keys',
+            description: 'Buy price ceiling — keys',
+            type: ApplicationCommandOptionType.Integer as const,
+            required: false,
+            min_value: 0
+        },
+        {
+            name: 'max_buy_metal',
+            description: 'Buy price ceiling — ref',
             type: ApplicationCommandOptionType.Number as const,
             required: false,
             min_value: 0
@@ -478,6 +534,14 @@ function readPricelistFields(options: SlashOptionReader, intentRequired: boolean
         sellMetal: options.getNumber('sell_metal'),
         buyKeys: options.getInteger('buy_keys'),
         buyMetal: options.getNumber('buy_metal'),
+        minSellKeys: options.getInteger('min_sell_keys'),
+        minSellMetal: options.getNumber('min_sell_metal'),
+        maxSellKeys: options.getInteger('max_sell_keys'),
+        maxSellMetal: options.getNumber('max_sell_metal'),
+        minBuyKeys: options.getInteger('min_buy_keys'),
+        minBuyMetal: options.getNumber('min_buy_metal'),
+        maxBuyKeys: options.getInteger('max_buy_keys'),
+        maxBuyMetal: options.getNumber('max_buy_metal'),
         enabled: options.getBoolean('enabled'),
         min: options.getInteger('min'),
         max: options.getInteger('max'),

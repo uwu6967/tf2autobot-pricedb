@@ -130,23 +130,25 @@ function listPrices(offer: TradeOffer, bot: Bot, isSteamChat: boolean): string {
             autoprice = entry.autoprice ? `autopriced${entry.isPartialPriced ? ' - ppu' : ''}` : 'manual';
         }
 
+        const sku = entry?.sku ?? priceKey;
         const name = testPriceKey(priceKey)
-            ? bot.schema.getName(SKU.fromString(entry?.sku ?? priceKey), properName)
+            ? bot.schema.getName(SKU.fromString(sku), properName)
             : priceKey;
+        const skuTag = testPriceKey(priceKey) ? ` (\`${sku}\`)` : '';
 
         toJoin.push(
             `${
                 isSteamChat
-                    ? `${name} - ${buyPrice} / ${sellPrice} (${autoprice})`
-                    : `_${name}_ - ${buyPrice} / ${sellPrice} (${autoprice})`
+                    ? `${name}${skuTag} — buy ${buyPrice} / sell ${sellPrice} (${autoprice})`
+                    : `_${name}_${skuTag} — buy ${buyPrice} / sell ${sellPrice} (${autoprice})`
             }`
         );
     }
 
     if (toJoin.length > 0) {
         text = isSteamChat
-            ? '📜 Item prices\n- ' + toJoin.join(',\n- ')
-            : '📜 **Item prices**\n- ' + toJoin.join(',@\n- ');
+            ? '📜 Pricelist used\n- ' + toJoin.join(',\n- ')
+            : '📜 **Pricelist used**\n- ' + toJoin.join(',@\n- ');
     }
 
     return text;

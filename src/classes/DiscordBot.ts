@@ -20,9 +20,17 @@ import log from '../lib/logger';
 import Options from './Options';
 import Bot from './Bot';
 import SteamID from 'steamid';
-import TradeOfferManager, { Meta } from '@tf2autobot/tradeoffer-manager';
+import TradeOfferManager, { ItemsDict, Meta, TradeOffer } from '@tf2autobot/tradeoffer-manager';
+import SKU from '@tf2autobot/tf2-sku';
 import { DiscordRedirectTarget } from '../lib/discordRedirect';
 import { BOT_COMMAND_NAMES, getSlashCommandDefinitions, resolveSlashRoute } from './DiscordSlashCommands';
+import { EntryData, PricelistChangedSource } from './Pricelist';
+
+interface PendingTradeAutoAdd {
+    items: { sku: string; name: string }[];
+    added: Set<number>;
+    createdAt: number;
+}
 
 export default class DiscordBot {
     readonly client: Client;
@@ -30,6 +38,8 @@ export default class DiscordBot {
     private prefix = '!';
 
     private MAX_MESSAGE_LENGTH = 2000 - 2; // some characters are reserved
+
+    private readonly pendingTradeAutoAdds = new Map<string, PendingTradeAutoAdd>();
 
     constructor(private options: Options, private bot: Bot) {
         this.client = new Client({
@@ -53,6 +63,10 @@ export default class DiscordBot {
     private static readonly UNHALT_BUTTON_ID = 'tf2autobot:unhalt';
     private static readonly FACCEPT_PREFIX = 'tf2autobot:faccept:';
     private static readonly FDECLINE_PREFIX = 'tf2autobot:fdecline:';
+    private static readonly AUTOADD_PREFIX = 'tf2autobot:autoadd:';
+    private static readonly PURE_SKUS = new Set(['5000;6', '5001;6', '5002;6', '5021;6']);
+    private static readonly AUTOADD_MAX_ITEMS = 20;
+    private static readonly AUTOADD_TTL_MS = 24 * 60 * 60 * 1000;
 
     public async start(): Promise<void> {
         try {
@@ -204,6 +218,160 @@ export default class DiscordBot {
             log.info(`Sent offer review buttons for #${options.offerId}`);
         } catch (err) {
             log.warn(`Failed to send offer review buttons for #${options.offerId}:`, err);
+        }
+    }
+
+    /**
+     * After an accepted trade, post numbered Auto-add buttons for items we received
+     * that are not already in the pricelist (excludes pure / weapons-as-currency).
+     */
+    public async sendTradeAutoAddButtons(offer: TradeOffer): Promise<void> {
+        if (!this.client.isReady()) {
+            return;
+        }
+
+        const items = this.getAddableItemsFromOffer(offer);
+        if (items.length === 0) {
+            return;
+        }
+
+        const channel = await this.getOpsTextChannel();
+        if (!channel) {
+            log.warn('Cannot send trade auto-add buttons — no ops channel configured');
+            return;
+        }
+
+        const offerId = String(offer.id);
+        this.pruneExpiredAutoAdds();
+        this.pendingTradeAutoAdds.set(offerId, {
+            items,
+            added: new Set(),
+            createdAt: Date.now()
+        });
+
+        const { content, components } = this.buildAutoAddMessage(offerId, items, new Set());
+
+        try {
+            await channel.send({ content, components });
+            log.info(`Sent trade auto-add buttons for #${offerId} (${items.length} items)`);
+        } catch (err) {
+            this.pendingTradeAutoAdds.delete(offerId);
+            log.warn(`Failed to send trade auto-add buttons for #${offerId}:`, err);
+        }
+    }
+
+    private getAddableItemsFromOffer(offer: TradeOffer): { sku: string; name: string }[] {
+        const dict = offer.data('dict') as ItemsDict | undefined;
+        if (!dict?.their) {
+            return [];
+        }
+
+        const weaponsAsCurrency = this.bot.handler.isWeaponsAsCurrency;
+        const craftWeapons = this.bot.craftWeapons;
+        const uncraftWeapons = this.bot.uncraftWeapons;
+
+        const out: { sku: string; name: string }[] = [];
+        for (const sku of Object.keys(dict.their)) {
+            if (DiscordBot.PURE_SKUS.has(sku)) {
+                continue;
+            }
+
+            if (
+                weaponsAsCurrency.enable &&
+                (craftWeapons.includes(sku) || (weaponsAsCurrency.withUncraft && uncraftWeapons.includes(sku)))
+            ) {
+                continue;
+            }
+
+            if (this.bot.pricelist.hasPrice({ priceKey: sku })) {
+                continue;
+            }
+
+            let name: string;
+            try {
+                name = this.bot.schema.getName(SKU.fromString(sku), false);
+            } catch {
+                name = sku;
+            }
+
+            out.push({ sku, name });
+            if (out.length >= DiscordBot.AUTOADD_MAX_ITEMS) {
+                break;
+            }
+        }
+
+        return out;
+    }
+
+    private buildAutoAddMessage(
+        offerId: string,
+        items: { sku: string; name: string }[],
+        added: Set<number>
+    ): { content: string; components: ActionRowBuilder<ButtonBuilder>[] } {
+        const lines = items.map((item, i) => {
+            const mark = added.has(i) ? '✅' : `${i + 1}.`;
+            return `${mark} ${item.name} (\`${item.sku}\`)`;
+        });
+
+        let content =
+            `📥 **Auto-add from trade \`#${offerId}\`?**\n` +
+            `Items we received (not yet in pricelist):\n` +
+            lines.join('\n');
+
+        if (content.length > 1900) {
+            content = content.slice(0, 1890) + '\n…';
+        }
+
+        const components: ActionRowBuilder<ButtonBuilder>[] = [];
+        const pendingIndexes = items.map((_, i) => i).filter(i => !added.has(i));
+
+        for (let i = 0; i < pendingIndexes.length; i += 5) {
+            const chunk = pendingIndexes.slice(i, i + 5);
+            const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+                ...chunk.map(idx =>
+                    new ButtonBuilder()
+                        .setCustomId(`${DiscordBot.AUTOADD_PREFIX}${offerId}:${idx}`)
+                        .setLabel(String(idx + 1))
+                        .setStyle(ButtonStyle.Primary)
+                )
+            );
+            components.push(row);
+        }
+
+        if (pendingIndexes.length > 0) {
+            // Discord allows max 5 rows; keep All on its own row when possible
+            if (components.length >= 5) {
+                // Drop last number row capacity: put All on last row if room, else skip All
+                const last = components[components.length - 1];
+                if (last.components.length < 5) {
+                    last.addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`${DiscordBot.AUTOADD_PREFIX}${offerId}:all`)
+                            .setLabel('All')
+                            .setStyle(ButtonStyle.Success)
+                    );
+                }
+            } else {
+                components.push(
+                    new ActionRowBuilder<ButtonBuilder>().addComponents(
+                        new ButtonBuilder()
+                            .setCustomId(`${DiscordBot.AUTOADD_PREFIX}${offerId}:all`)
+                            .setLabel('All')
+                            .setStyle(ButtonStyle.Success)
+                    )
+                );
+            }
+        }
+
+        return { content, components };
+    }
+
+    private pruneExpiredAutoAdds(): void {
+        const now = Date.now();
+        for (const [id, pending] of this.pendingTradeAutoAdds) {
+            if (now - pending.createdAt > DiscordBot.AUTOADD_TTL_MS) {
+                this.pendingTradeAutoAdds.delete(id);
+            }
         }
     }
 
@@ -403,6 +571,11 @@ export default class DiscordBot {
             await this.handleOfferReviewButton(interaction);
             return;
         }
+
+        if (customId.startsWith(DiscordBot.AUTOADD_PREFIX)) {
+            await this.handleTradeAutoAddButton(interaction);
+            return;
+        }
     }
 
     private async handleUnhaltButton(interaction: ButtonInteraction): Promise<void> {
@@ -516,6 +689,130 @@ export default class DiscordBot {
                     content: `❌ Failed to ${actionLabel.toLowerCase()} offer \`#${offerId}\`: ${errMsg}`,
                     ephemeral: true
                 })
+                .catch(() => undefined);
+        }
+    }
+
+    private async handleTradeAutoAddButton(interaction: ButtonInteraction): Promise<void> {
+        const payload = interaction.customId.slice(DiscordBot.AUTOADD_PREFIX.length);
+        const sep = payload.lastIndexOf(':');
+        if (sep <= 0) {
+            await interaction.reply({ content: '❌ Invalid auto-add button.', ephemeral: true });
+            return;
+        }
+
+        const offerId = payload.slice(0, sep);
+        const target = payload.slice(sep + 1);
+
+        if (!/^\d+$/.test(offerId) || (target !== 'all' && !/^\d+$/.test(target))) {
+            await interaction.reply({ content: '❌ Invalid auto-add button.', ephemeral: true });
+            return;
+        }
+
+        if (!this.isDiscordAdmin(interaction.user.id)) {
+            await interaction.reply({
+                content: '⛔ Only admins can auto-add items.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        if (!this.bot.isReady) {
+            await interaction.reply({ content: '🛑 Bot is still booting, please wait.', ephemeral: true });
+            return;
+        }
+
+        const pending = this.pendingTradeAutoAdds.get(offerId);
+        if (!pending) {
+            await interaction.update({
+                content: `⚠️ Auto-add for trade \`#${offerId}\` expired or was already finished.`,
+                components: []
+            });
+            return;
+        }
+
+        const indexes =
+            target === 'all'
+                ? pending.items.map((_, i) => i).filter(i => !pending.added.has(i))
+                : [parseInt(target, 10)];
+
+        if (indexes.some(i => i < 0 || i >= pending.items.length)) {
+            await interaction.reply({ content: '❌ Invalid item number.', ephemeral: true });
+            return;
+        }
+
+        try {
+            await interaction.deferUpdate();
+
+            const results: string[] = [];
+            for (const idx of indexes) {
+                if (pending.added.has(idx)) {
+                    results.push(`• #${idx + 1} already added`);
+                    continue;
+                }
+
+                const item = pending.items[idx];
+                if (this.bot.pricelist.hasPrice({ priceKey: item.sku })) {
+                    pending.added.add(idx);
+                    results.push(`• #${idx + 1} ${item.name} (\`${item.sku}\`) — already in pricelist`);
+                    continue;
+                }
+
+                const entryData: EntryData = {
+                    sku: item.sku,
+                    enabled: true,
+                    autoprice: true,
+                    min: 0,
+                    max: 1,
+                    intent: 2,
+                    note: { buy: null, sell: null },
+                    group: 'all',
+                    promoted: 0,
+                    isPartialPriced: false
+                };
+
+                try {
+                    const entry = await this.bot.pricelist.addPrice({
+                        entryData,
+                        emitChange: true,
+                        src: PricelistChangedSource.Command
+                    });
+                    pending.added.add(idx);
+                    results.push(`• ✅ #${idx + 1} ${entry.name} (\`${item.sku}\`)`);
+                } catch (err) {
+                    const errMsg = err instanceof Error ? err.message : String(err);
+                    results.push(`• ❌ #${idx + 1} ${item.name} (\`${item.sku}\`): ${errMsg}`);
+                }
+            }
+
+            const allDone = pending.items.every((_, i) => pending.added.has(i));
+            if (allDone) {
+                this.pendingTradeAutoAdds.delete(offerId);
+                await interaction.editReply({
+                    content:
+                        `✅ Auto-add finished for trade \`#${offerId}\` by <@${interaction.user.id}>\n` +
+                        results.join('\n'),
+                    components: []
+                });
+            } else {
+                const { content, components } = this.buildAutoAddMessage(offerId, pending.items, pending.added);
+                await interaction.editReply({
+                    content:
+                        content +
+                        `\n\n_Last action by <@${interaction.user.id}>:_\n` +
+                        results.join('\n'),
+                    components
+                });
+            }
+
+            log.info(
+                `Discord auto-add (${target}) for #${offerId} by ${interaction.user.tag}: ${results.join('; ')}`
+            );
+        } catch (err) {
+            log.error(`Failed handling trade auto-add for #${offerId}:`, err);
+            const errMsg = err instanceof Error ? err.message : String(err);
+            await interaction
+                .followUp({ content: `❌ Auto-add failed: ${errMsg}`, ephemeral: true })
                 .catch(() => undefined);
         }
     }

@@ -11,6 +11,14 @@ export interface PricelistSlashFields {
     sellMetal?: number | null;
     buyKeys?: number | null;
     buyMetal?: number | null;
+    minSellKeys?: number | null;
+    minSellMetal?: number | null;
+    maxSellKeys?: number | null;
+    maxSellMetal?: number | null;
+    minBuyKeys?: number | null;
+    minBuyMetal?: number | null;
+    maxBuyKeys?: number | null;
+    maxBuyMetal?: number | null;
     enabled?: boolean | null;
     min?: number | null;
     max?: number | null;
@@ -18,6 +26,19 @@ export interface PricelistSlashFields {
 }
 
 const VALID_LOOKUPS = new Set<ItemLookupType>(['sku', 'id', 'item', 'defindex', 'name']);
+
+function pushCurrencySide(
+    parts: string[],
+    prefix: string,
+    keys: number | null | undefined,
+    metal: number | null | undefined
+): void {
+    if (keys == null && metal == null) {
+        return;
+    }
+    parts.push(`${prefix}.keys=${keys ?? 0}`);
+    parts.push(`${prefix}.metal=${metal ?? 0}`);
+}
 
 export function buildPricelistParamString(fields: PricelistSlashFields): string | null {
     const lookup = fields.lookup?.trim().toLowerCase() as ItemLookupType;
@@ -45,6 +66,11 @@ export function buildPricelistParamString(fields: PricelistSlashFields): string 
         parts.push(`buy.keys=${fields.buyKeys ?? 0}`);
         parts.push(`buy.metal=${fields.buyMetal ?? 0}`);
     }
+
+    pushCurrencySide(parts, 'minSell', fields.minSellKeys, fields.minSellMetal);
+    pushCurrencySide(parts, 'maxSell', fields.maxSellKeys, fields.maxSellMetal);
+    pushCurrencySide(parts, 'minBuy', fields.minBuyKeys, fields.minBuyMetal);
+    pushCurrencySide(parts, 'maxBuy', fields.maxBuyKeys, fields.maxBuyMetal);
 
     if (fields.autopriceSell === true) {
         parts.push('autoprice=false');

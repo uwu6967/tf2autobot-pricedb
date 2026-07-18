@@ -246,6 +246,9 @@ export default async function processAccepted(
         );
     }
 
+    // Numbered Auto-add buttons in ops Discord for items we received (not yet priced)
+    void bot.discordBot?.sendTradeAutoAddButtons(offer);
+
     return {
         theirHighValuedItems,
         isDisableSKU,

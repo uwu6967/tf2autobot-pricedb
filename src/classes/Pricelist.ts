@@ -42,6 +42,14 @@ export interface EntryData {
     sell?: Currency | null;
     buyUsd?: number; // cents
     sellUsd?: number; // cents
+    /** Floor for live/manual buy price (optional) */
+    minBuy?: Currency | null;
+    /** Ceiling for live/manual buy price (optional) */
+    maxBuy?: Currency | null;
+    /** Floor for live/manual sell price (optional) */
+    minSell?: Currency | null;
+    /** Ceiling for live/manual sell price (optional) */
+    maxSell?: Currency | null;
     promoted?: 0 | 1;
     group?: string | null;
     note?: { buy: string | null; sell: string | null };
@@ -81,6 +89,13 @@ export class Entry implements EntryData {
 
     sellUsd?: number;
 
+    minBuy: Currencies | null;
+
+    maxBuy: Currencies | null;
+
+    minSell: Currencies | null;
+
+    maxSell: Currencies | null;
 
     promoted: 0 | 1;
 
@@ -118,6 +133,10 @@ export class Entry implements EntryData {
         this.sellUsd = entry.sellUsd;
         this.min = entry.min;
         this.max = entry.max;
+        this.minBuy = entry.minBuy ? new Currencies(entry.minBuy) : null;
+        this.maxBuy = entry.maxBuy ? new Currencies(entry.maxBuy) : null;
+        this.minSell = entry.minSell ? new Currencies(entry.minSell) : null;
+        this.maxSell = entry.maxSell ? new Currencies(entry.maxSell) : null;
 
         if (entry.id) {
             // Always set to sell if id is defined
@@ -307,6 +326,10 @@ export class Entry implements EntryData {
             sell: this.sell === null ? null : this.sell.toJSON(),
             buyUsd: this.buyUsd,
             sellUsd: this.sellUsd,
+            minBuy: this.minBuy === null ? null : this.minBuy.toJSON(),
+            maxBuy: this.maxBuy === null ? null : this.maxBuy.toJSON(),
+            minSell: this.minSell === null ? null : this.minSell.toJSON(),
+            maxSell: this.maxSell === null ? null : this.maxSell.toJSON(),
             promoted: this.promoted,
             group: this.group,
             note: this.note,
@@ -648,8 +671,7 @@ export default class Pricelist extends EventEmitter {
                 throw this.priceFetchError(entry.sku, 'prices', err);
             });
 
-            const newPrices =
-                price.buy && price.sell ? { buy: new Currencies(price.buy), sell: new Currencies(price.sell) } : null;
+            const newPrices = this.parseAutopriceResponse(entry, price);
 
             if (price.buyUsd !== undefined) {
                 entry.buyUsd = price.buyUsd;
@@ -694,8 +716,10 @@ export default class Pricelist extends EventEmitter {
                 this.currentKeyPrices = newPrices;
             }
 
-            entry.buy = newPrices.buy;
-            entry.sell = newPrices.sell;
+            this.applyAutopriceByIntent(entry, newPrices, {
+                buyUsd: price.buyUsd,
+                sellUsd: price.sellUsd
+            });
             entry.time = price.time;
         } else if (!entry.autoprice && entry.autopriceSell && !isBulk) {
             const price: GetItemPriceResponse = await this.priceSource.getPrice(entry.sku).catch(err => {
@@ -708,6 +732,7 @@ export default class Pricelist extends EventEmitter {
 
             entry.sell = this.clampSellAboveBuy(entry.buy, new Currencies(price.sell), keyPrices.buy.metal);
             entry.time = price.time;
+            this.applyPriceRangeClamps(entry, keyPrices.buy.metal);
         } else if (!entry.autoprice && entry.autopriceBuy && !isBulk) {
             const price: GetItemPriceResponse = await this.priceSource.getPrice(entry.sku).catch(err => {
                 throw this.priceFetchError(entry.sku, 'buy', err);
@@ -719,6 +744,7 @@ export default class Pricelist extends EventEmitter {
 
             entry.buy = this.clampBuyBelowSell(new Currencies(price.buy), entry.sell, keyPrices.buy.metal);
             entry.time = price.time;
+            this.applyPriceRangeClamps(entry, keyPrices.buy.metal);
         } else if (isBulk) {
             if (entry.autoprice) {
                 const item = this.transformedPricelistForBulk[entry.sku];
@@ -727,8 +753,7 @@ export default class Pricelist extends EventEmitter {
                     throw new Error(`Manually price ${entry.sku} or disable autoprice for this item`);
                 }
 
-                const newPrices =
-                    item.buy && item.sell ? { buy: new Currencies(item.buy), sell: new Currencies(item.sell) } : null;
+                const newPrices = this.parseAutopriceFromBuySell(entry, item.buy, item.sell);
 
                 if (item.buyUsd !== undefined) {
                     entry.buyUsd = item.buyUsd;
@@ -773,8 +798,10 @@ export default class Pricelist extends EventEmitter {
                     this.currentKeyPrices = newPrices;
                 }
 
-                entry.buy = newPrices.buy;
-                entry.sell = newPrices.sell;
+                this.applyAutopriceByIntent(entry, newPrices, {
+                    buyUsd: item.buyUsd,
+                    sellUsd: item.sellUsd
+                });
                 entry.time = item.time;
             } else if (entry.autopriceSell) {
                 const item = this.transformedPricelistForBulk[entry.sku];
@@ -789,6 +816,7 @@ export default class Pricelist extends EventEmitter {
 
                 entry.sell = this.clampSellAboveBuy(entry.buy, new Currencies(item.sell), keyPrices.buy.metal);
                 entry.time = item.time;
+                this.applyPriceRangeClamps(entry, keyPrices.buy.metal);
             } else if (entry.autopriceBuy) {
                 const item = this.transformedPricelistForBulk[entry.sku];
 
@@ -802,12 +830,16 @@ export default class Pricelist extends EventEmitter {
 
                 entry.buy = this.clampBuyBelowSell(new Currencies(item.buy), entry.sell, keyPrices.buy.metal);
                 entry.time = item.time;
+                this.applyPriceRangeClamps(entry, keyPrices.buy.metal);
             }
         }
 
         if (!entry.hasPrice() && entry.buyUsd === undefined && entry.sellUsd === undefined) {
             throw new Error('Pricelist entry does not have a price');
         }
+
+        this.validatePriceRanges(entry);
+        this.applyPriceRangeClamps(entry, keyPrices.buy.metal);
 
         if (
             (entry.buyUsd !== undefined && (!Number.isSafeInteger(entry.buyUsd) || entry.buyUsd <= 0)) ||
@@ -832,6 +864,149 @@ export default class Pricelist extends EventEmitter {
                 time: null
             };
         }
+    }
+
+    /**
+     * Autoprice respects listing intent:
+     * - sell only → live sell, buy forced to 0
+     * - buy only → live buy, sell forced to 0
+     * - bank → both live
+     * Keys (5021;6) always keep both sides (needed for key rate).
+     */
+    private applyAutopriceByIntent(
+        entry: Entry,
+        newPrices: { buy: Currencies; sell: Currencies },
+        usd?: { buyUsd?: number; sellUsd?: number }
+    ): void {
+        if (entry.sku === '5021;6') {
+            entry.buy = newPrices.buy;
+            entry.sell = newPrices.sell;
+            if (usd?.buyUsd !== undefined) {
+                entry.buyUsd = usd.buyUsd;
+            }
+            if (usd?.sellUsd !== undefined) {
+                entry.sellUsd = usd.sellUsd;
+            }
+            this.applyPriceRangeClamps(entry);
+            return;
+        }
+
+        const zero = new Currencies({ keys: 0, metal: 0 });
+
+        if (entry.intent === 1) {
+            entry.buy = zero;
+            entry.sell = newPrices.sell;
+            entry.buyUsd = undefined;
+            entry.sellUsd = usd?.sellUsd;
+            this.applyPriceRangeClamps(entry);
+            return;
+        }
+
+        if (entry.intent === 0) {
+            entry.buy = newPrices.buy;
+            entry.sell = zero;
+            entry.buyUsd = usd?.buyUsd;
+            entry.sellUsd = undefined;
+            this.applyPriceRangeClamps(entry);
+            return;
+        }
+
+        entry.buy = newPrices.buy;
+        entry.sell = newPrices.sell;
+        if (usd?.buyUsd !== undefined) {
+            entry.buyUsd = usd.buyUsd;
+        }
+        if (usd?.sellUsd !== undefined) {
+            entry.sellUsd = usd.sellUsd;
+        }
+
+        this.applyPriceRangeClamps(entry);
+    }
+
+    private validatePriceRanges(entry: Entry): void {
+        const keyPrice = this.getKeyPrices.buy.metal;
+
+        if (
+            entry.minBuy &&
+            entry.maxBuy &&
+            entry.minBuy.toValue(keyPrice) > entry.maxBuy.toValue(keyPrice)
+        ) {
+            throw new Error('minBuy must be less than or equal to maxBuy');
+        }
+
+        if (
+            entry.minSell &&
+            entry.maxSell &&
+            entry.minSell.toValue(keyPrice) > entry.maxSell.toValue(keyPrice)
+        ) {
+            throw new Error('minSell must be less than or equal to maxSell');
+        }
+    }
+
+    /**
+     * Clamp buy/sell into optional per-entry min/max price ranges.
+     */
+    private applyPriceRangeClamps(entry: Entry, keyPriceMetal?: number): void {
+        const keyPrice = keyPriceMetal ?? this.getKeyPrices.buy.metal;
+
+        if (entry.buy) {
+            entry.buy = this.clampCurrencyToRange(entry.buy, entry.minBuy, entry.maxBuy, keyPrice);
+        }
+
+        if (entry.sell) {
+            entry.sell = this.clampCurrencyToRange(entry.sell, entry.minSell, entry.maxSell, keyPrice);
+        }
+    }
+
+    private clampCurrencyToRange(
+        value: Currencies,
+        min: Currencies | null,
+        max: Currencies | null,
+        keyPriceMetal: number
+    ): Currencies {
+        if (!min && !max) {
+            return value;
+        }
+
+        let scrap = value.toValue(keyPriceMetal);
+        if (min) {
+            scrap = Math.max(scrap, min.toValue(keyPriceMetal));
+        }
+        if (max) {
+            scrap = Math.min(scrap, max.toValue(keyPriceMetal));
+        }
+
+        return Currencies.toCurrencies(scrap, keyPriceMetal);
+    }
+
+    private parseAutopriceResponse(
+        entry: Entry,
+        price: GetItemPriceResponse
+    ): { buy: Currencies; sell: Currencies } | null {
+        return this.parseAutopriceFromBuySell(entry, price.buy, price.sell);
+    }
+
+    private parseAutopriceFromBuySell(
+        entry: Entry,
+        buy: Currency | null | undefined,
+        sell: Currency | null | undefined
+    ): { buy: Currencies; sell: Currencies } | null {
+        const zero = { keys: 0, metal: 0 };
+
+        if (buy && sell) {
+            return { buy: new Currencies(buy), sell: new Currencies(sell) };
+        }
+
+        // Sell-only / buy-only only need that side from the pricer
+        if (entry.sku !== '5021;6' && entry.intent === 1 && sell) {
+            return { buy: new Currencies(zero), sell: new Currencies(sell) };
+        }
+
+        if (entry.sku !== '5021;6' && entry.intent === 0 && buy) {
+            return { buy: new Currencies(buy), sell: new Currencies(zero) };
+        }
+
+        return null;
     }
 
     /**
@@ -1378,6 +1553,7 @@ export default class Pricelist extends EventEmitter {
                             currPrice.time = newestPrice.time;
                             pricesChanged = true;
                         }
+                        this.applyPriceRangeClamps(currPrice, keyPrice);
                     } catch (err) {
                         log.error(`Corrupted sell price data for ${sku}: `, err);
                         this.failedUpdateOldPrices.push(sku);
@@ -1404,6 +1580,7 @@ export default class Pricelist extends EventEmitter {
                             currPrice.time = newestPrice.time;
                             pricesChanged = true;
                         }
+                        this.applyPriceRangeClamps(currPrice, keyPrice);
                     } catch (err) {
                         log.error(`Corrupted buy price data for ${sku}: `, err);
                         this.failedUpdateOldPrices.push(sku);
@@ -1429,6 +1606,29 @@ export default class Pricelist extends EventEmitter {
                     //corrupted price data
                     log.error(`Corrupted price data for ${sku}: `, err);
                     this.failedUpdateOldPrices.push(sku);
+                    continue;
+                }
+
+                // Sell-only / buy-only: only update the live side; keep the other at 0
+                if (sku !== '5021;6' && (currPrice.intent === 0 || currPrice.intent === 1)) {
+                    const oldSide =
+                        currPrice.intent === 1
+                            ? oldPrices.sell.toValue(keyPrice)
+                            : oldPrices.buy.toValue(keyPrice);
+                    const newSide =
+                        currPrice.intent === 1
+                            ? newPrices.sell.toValue(keyPrice)
+                            : newPrices.buy.toValue(keyPrice);
+                    const otherIsZero =
+                        currPrice.intent === 1
+                            ? oldPrices.buy.toValue(keyPrice) === 0
+                            : oldPrices.sell.toValue(keyPrice) === 0;
+
+                    if (oldSide !== newSide || !otherIsZero || currPrice.time !== newestPrice.time) {
+                        this.applyAutopriceByIntent(currPrice, newPrices);
+                        currPrice.time = newestPrice.time;
+                        pricesChanged = true;
+                    }
                     continue;
                 }
 
@@ -1553,7 +1753,11 @@ export default class Pricelist extends EventEmitter {
                         pricesChanged = true;
                     }
                 }
+
+                // Keep optional min/max price ranges enforced after bulk refresh
+                this.applyPriceRangeClamps(currPrice, keyPrice);
             }
+
             if (pricesChanged) {
                 this.emit('pricelist', this.prices);
             }
@@ -1710,6 +1914,60 @@ export default class Pricelist extends EventEmitter {
             };
 
             const keyPrice = this.getKeyPrice.metal;
+
+            // Sell-only / buy-only: only update the live side; keep the other at 0 (skip PPU)
+            if (match.sku !== '5021;6' && (match.intent === 0 || match.intent === 1)) {
+                const oldSideValue =
+                    match.intent === 1 ? oldPrice.sell.toValue(keyPrice) : oldPrice.buy.toValue(keyPrice);
+                const newSideValue =
+                    match.intent === 1 ? newPrices.sell.toValue(keyPrice) : newPrices.buy.toValue(keyPrice);
+                const otherIsZero =
+                    match.intent === 1 ? oldPrice.buy.toValue(keyPrice) === 0 : oldPrice.sell.toValue(keyPrice) === 0;
+
+                if (oldSideValue === newSideValue && otherIsZero) {
+                    return;
+                }
+
+                this.applyAutopriceByIntent(match, newPrices);
+                match.time = data.time;
+
+                const buyChangesValue = Math.round(match.buy.toValue(keyPrice) - oldPrice.buy.toValue(keyPrice));
+                const sellChangesValue = Math.round(match.sell.toValue(keyPrice) - oldPrice.sell.toValue(keyPrice));
+
+                this.priceChanged(match.sku, match);
+
+                if (isDwEnabled) {
+                    const currentStock = this.bot.inventoryManager.getInventory.getAmount({
+                        priceKey: match.sku,
+                        includeNonNormalized: false,
+                        tradableOnly: true
+                    });
+                    const showOnlyInStock = dw.showOnlyInStock ? currentStock > 0 : true;
+                    if (showOnlyInStock) {
+                        const tz = opt.timezone;
+                        const format = opt.customTimeFormat;
+                        const time = dayjs()
+                            .tz(tz ? tz : 'UTC')
+                            .format(format ? format : 'MMMM Do YYYY, HH:mm:ss ZZ');
+                        sendWebHookPriceUpdateV1(
+                            this.schema,
+                            opt,
+                            match.sku,
+                            time,
+                            { buy: match.buy, sell: match.sell },
+                            oldPrice,
+                            currentStock,
+                            keyPrice,
+                            buyChangesValue,
+                            sellChangesValue,
+                            this.isUseCustomPricer,
+                            this.bot.handler.getBotInfo
+                        );
+                    }
+                }
+                return;
+            }
+
             const oldBuyValue = oldPrice.buy.toValue(keyPrice);
             const newBuyValue = newPrices.buy.toValue(keyPrice);
             const oldSellValue = oldPrice.sell.toValue(keyPrice);
@@ -2034,6 +2292,7 @@ export default class Pricelist extends EventEmitter {
     }
 
     private priceChanged(priceKey: string | number, entry: Entry): void {
+        this.applyPriceRangeClamps(entry);
         this.emit('price', priceKey, entry);
 
         if (++this.priceChangeCounter % this.options.pricelist.rewriteFile.count === 0) {

@@ -95,6 +95,8 @@ export default class PricelistManagerCommands {
             }
         }
 
+        this.normalizePriceRangeParams(params);
+
         const isPremium = this.bot.handler.getBotInfo.premium;
         if (params.promoted !== undefined) {
             if (!isPremium) {
@@ -1145,6 +1147,8 @@ export default class PricelistManagerCommands {
             }
         }
 
+        this.normalizePriceRangeParams(params);
+
         if (typeof params.note === 'object') {
             params.note.buy = params.note.buy || itemEntry.note.buy;
             params.note.sell = params.note.sell || itemEntry.note.sell;
@@ -1654,6 +1658,26 @@ export default class PricelistManagerCommands {
                             PricelistManagerCommands.isBulkOperation = false;
                         }
                     });
+            }
+        }
+    }
+
+    /**
+     * Normalize optional minBuy/maxBuy/minSell/maxSell currency objects on command params.
+     * Pass null to clear a bound (e.g. minSell=null).
+     */
+    private normalizePriceRangeParams(params: UnknownDictionaryKnownValues | EntryData): void {
+        const keys = ['minBuy', 'maxBuy', 'minSell', 'maxSell'] as const;
+        for (const key of keys) {
+            const value = params[key];
+            if (value === null) {
+                continue;
+            }
+            if (typeof value === 'object') {
+                const currency = value as { keys?: number; metal?: number };
+                currency.keys = currency.keys || 0;
+                currency.metal = currency.metal || 0;
+                params[key] = currency;
             }
         }
     }
@@ -2619,6 +2643,25 @@ export default class PricelistManagerCommands {
     }
 }
 
+function formatPriceRange(entry: Entry): string {
+    const parts: string[] = [];
+    if (entry.minBuy || entry.maxBuy) {
+        parts.push(
+            `Buy range: ${entry.minBuy ? entry.minBuy.toString() : '—'} → ${
+                entry.maxBuy ? entry.maxBuy.toString() : '—'
+            }`
+        );
+    }
+    if (entry.minSell || entry.maxSell) {
+        parts.push(
+            `Sell range: ${entry.minSell ? entry.minSell.toString() : '—'} → ${
+                entry.maxSell ? entry.maxSell.toString() : '—'
+            }`
+        );
+    }
+    return parts.length > 0 ? `\n📏 ${parts.join(' | ')}` : '';
+}
+
 function generateAddedReply(bot: Bot, isPremium: boolean, entry: Entry): string {
     const amount = bot.inventoryManager.getInventory.getAmount({
         priceKey: entry.id ?? entry.sku,
@@ -2627,6 +2670,7 @@ function generateAddedReply(bot: Bot, isPremium: boolean, entry: Entry): string 
 
     return (
         `${formatTfPrices(entry)}` +
+        `${formatPriceRange(entry)}` +
         `${formatUsdPrices(entry)}` +
         `\n🛒 Intent: ${entry.intent === 2 ? 'bank' : entry.intent === 1 ? 'sell' : 'buy'}` +
         `\n📦 Stock: ${amount} | Min: ${entry.min} | Max: ${entry.max}` +

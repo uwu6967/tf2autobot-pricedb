@@ -4,6 +4,19 @@
 
 This is a fork of [TF2Autobot](https://github.com/idinium96/tf2autobot), with changes made to work and use [pricedb.io](https://pricedb.io) as the default pricing source after the shutdown of prices.tf.
 
+**Public blank-bot releases:** [uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb/releases) (use with [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)).
+
+Clone a clean install:
+
+```bash
+git clone https://github.com/uwu6967/tf2autobot-pricedb.git
+cd tf2autobot-pricedb
+cp template.env .env
+npm install && npm run build
+```
+
+Do **not** commit `.env` or `files/` — those hold your live credentials and account data.
+
 ## Requirements
 
 -   Node.js 22.x or a newer LTS release

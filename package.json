@@ -1,6 +1,6 @@
 {
     "name": "tf2autobot-pricedb-io",
-    "version": "5.17.0",
+    "version": "1.0.6",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
     "scripts": {
@@ -18,16 +18,16 @@
     },
     "repository": {
         "type": "git",
-        "url": "git+https://github.com/TF2-Price-DB/tf2autobot-pricedb.git"
+        "url": "git+https://github.com/uwu6967/tf2autobot-pricedb.git"
     },
     "author": "TF2Autobot/IdiNium",
     "license": "MIT",
     "bugs": {
-        "url": "https://github.com/TF2-Price-DB/tf2autobot-pricedb/issues"
+        "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "New version may require changes to your options.json! Please check the readme for details!",
-    "homepage": "https://github.com/TF2-Price-DB/tf2autobot-pricedb#readme",
+    "updateMessage": "Merged upstream 5.17.0 RC with Discord Autokeys/partial-autoprice and panel IPC string errors. Check options.json / Discord settings after updating.",
+    "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",
         "@tf2autobot/bptf-login": "^2.5.0",
@@ -115,5 +115,6 @@
     "private": true,
     "_moduleAliases": {
         "@pricer": "dist/lib/pricer"
-    }
+    },
+    "upstreamVersion": "5.17.0"
 }

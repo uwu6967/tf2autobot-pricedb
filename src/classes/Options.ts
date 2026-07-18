@@ -201,15 +201,15 @@ export const DEFAULTS: JsonOptions = {
         customText: {
             summary: {
                 steamChat: 'Summary',
-                discordWebhook: '__**Summary**__'
+                discordWebhook: '**Trade summary**'
             },
             asked: {
                 steamChat: '• Asked:',
-                discordWebhook: '**• Asked:**'
+                discordWebhook: '**We gave them** (bot → partner):'
             },
             offered: {
                 steamChat: '• Offered:',
-                discordWebhook: '**• Offered:**'
+                discordWebhook: '**They gave us** (partner → bot):'
             },
             offerMessage: {
                 steamChat: '💬 Offer message:',

@@ -19,7 +19,7 @@ export function summarizeToChat(
     isSteamChat: boolean,
     isOfferSent: boolean | undefined = undefined
 ): string {
-    const generatedSummary = summarize(offer, bot, type, withLink);
+    const generatedSummary = summarize(offer, bot, type, withLink, !isSteamChat);
 
     const cT = bot.options.tradeSummary.customText;
     const cTSummary = isSteamChat
@@ -28,7 +28,7 @@ export function summarizeToChat(
             : 'Summary'
         : cT.summary.discordWebhook
         ? cT.summary.discordWebhook
-        : '__**Summary**__';
+        : '**Trade summary**';
 
     const cTAsked = isSteamChat
         ? cT.asked.steamChat
@@ -36,7 +36,7 @@ export function summarizeToChat(
             : '• Asked:'
         : cT.asked.discordWebhook
         ? cT.asked.discordWebhook
-        : '**• Asked:**';
+        : '**We gave them** (bot → partner):';
 
     const cTOffered = isSteamChat
         ? cT.offered.steamChat
@@ -44,7 +44,7 @@ export function summarizeToChat(
             : '• Offered:'
         : cT.offered.discordWebhook
         ? cT.offered.discordWebhook
-        : '**• Offered:**';
+        : '**They gave us** (partner → bot):';
 
     const cTProfit = isSteamChat
         ? cT.profitFromOverpay.steamChat
@@ -63,20 +63,38 @@ export function summarizeToChat(
         : '📉 ***Loss from underpay:***';
 
     const isCountered = offer.data('processCounterTime') !== undefined;
-    const reply =
-        `\n\n${cTSummary}${
-            isOfferSent !== undefined ? ` (${isOfferSent ? 'chat' : `offer${isCountered ? ' - countered' : ''}`})` : ''
-        }\n` +
-        `${cTAsked} ${generatedSummary.asked}` +
-        `\n${cTOffered} ${generatedSummary.offered}` +
-        '\n──────────────────────' +
-        (['summary-accepted', 'review-admin'].includes(type) && !isOfferSent
-            ? value.diff > 0
-                ? `\n${cTProfit} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
-                : value.diff < 0
-                ? `\n${cTLoss} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
-                : ''
-            : '');
+    const tradeKind =
+        isOfferSent !== undefined
+            ? ` (${isOfferSent ? 'from chat' : `from offer${isCountered ? ' · countered' : ''}`})`
+            : '';
+
+    const reply = !isSteamChat
+        ? `\n\n${cTSummary}${tradeKind}\n` +
+          `${cTAsked}\n${generatedSummary.asked}\n\n` +
+          `${cTOffered}\n${generatedSummary.offered}` +
+          '\n──────────────────────' +
+          (['summary-accepted', 'review-admin'].includes(type) && !isOfferSent
+              ? value.diff > 0
+                  ? `\n${cTProfit} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
+                  : value.diff < 0
+                  ? `\n${cTLoss} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
+                  : ''
+              : '')
+        : `\n\n${cTSummary}${
+              isOfferSent !== undefined
+                  ? ` (${isOfferSent ? 'chat' : `offer${isCountered ? ' - countered' : ''}`})`
+                  : ''
+          }\n` +
+          `${cTAsked} ${generatedSummary.asked}` +
+          `\n${cTOffered} ${generatedSummary.offered}` +
+          '\n──────────────────────' +
+          (['summary-accepted', 'review-admin'].includes(type) && !isOfferSent
+              ? value.diff > 0
+                  ? `\n${cTProfit} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
+                  : value.diff < 0
+                  ? `\n${cTLoss} ${value.diffRef} ref` + (value.diffRef >= value.rate ? ` (${value.diffKey})` : '')
+                  : ''
+              : '');
 
     return reply;
 }
@@ -95,16 +113,44 @@ export default function summarize(
     offer: TradeOffer,
     bot: Bot,
     type: SummarizeType,
-    withLink: boolean
+    withLink: boolean,
+    humanReadable = false
 ): { asked: string; offered: string } {
     const value = offer.data('value') as ItemsValue;
     const items = (offer.data('dict') as ItemsDict) || { our: null, their: null };
     const showStockChanges = bot.options.tradeSummary.showStockChanges;
 
-    const ourCount = Object.keys(items.our).length;
-    const theirCount = Object.keys(items.their).length;
+    const ourCount = Object.keys(items.our || {}).length;
+    const theirCount = Object.keys(items.their || {}).length;
 
     const isCompressSummary = (ourCount > 15 && theirCount > 15) || ourCount + theirCount > 28; // Estimate until limit reached
+
+    if (humanReadable) {
+        const ourValue = value ? new Currencies(value.our).toString() : null;
+        const theirValue = value ? new Currencies(value.their).toString() : null;
+        return {
+            asked: formatHumanSide(
+                items.our,
+                bot,
+                'our',
+                type,
+                withLink,
+                showStockChanges,
+                isCompressSummary,
+                ourValue
+            ),
+            offered: formatHumanSide(
+                items.their,
+                bot,
+                'their',
+                type,
+                withLink,
+                showStockChanges,
+                isCompressSummary,
+                theirValue
+            )
+        };
+    }
 
     if (!value) {
         // If trade with ADMINS or Gift
@@ -143,6 +189,23 @@ export default function summarize(
     }
 }
 
+function formatHumanSide(
+    dict: OurTheirItemsDict,
+    bot: Bot,
+    which: string,
+    type: string,
+    withLink: boolean,
+    showStockChanges: boolean,
+    isCompressSummary: boolean,
+    totalValue: string | null
+): string {
+    const itemsLine = getSummary(dict, bot, which, type, withLink, showStockChanges, isCompressSummary, true);
+    if (itemsLine === 'nothing' || itemsLine === 'unknown items') {
+        return totalValue ? `${itemsLine}\n💵 Worth: **${totalValue}**` : itemsLine;
+    }
+    return totalValue ? `${itemsLine}\n💵 Worth: **${totalValue}**` : itemsLine;
+}
+
 function getSummary(
     dict: OurTheirItemsDict,
     bot: Bot,
@@ -150,7 +213,8 @@ function getSummary(
     type: string,
     withLink: boolean,
     showStockChanges: boolean,
-    isCompressSummary: boolean
+    isCompressSummary: boolean,
+    humanReadable = false
 ): string {
     if (dict === null) {
         return 'unknown items';
@@ -187,6 +251,8 @@ function getSummary(
             generateName = priceKey; // Non-TF2 items
         }
         const name = properName ? generateName : replace.itemName(generateName || 'unknown');
+        const skuTag = humanReadable && isTF2Items ? ` (\`${sku}\`)` : '';
+        const amountTag = amount > 1 ? ` ×${amount}` : '';
 
         if (showStockChanges) {
             let oldStock: number | null = 0;
@@ -212,56 +278,60 @@ function getSummary(
                 oldStock = currentStock;
             }
 
+            const stockTag = ` (${
+                (summaryAccepted || summaryInProcess) && oldStock !== null ? `${oldStock} → ` : ''
+            }${
+                which === 'our'
+                    ? summaryInProcess
+                        ? currentStock - amount
+                        : currentStock
+                    : summaryInProcess
+                    ? currentStock + amount
+                    : currentStock
+            }${entry ? `/${entry.max}` : ''})`;
+
             if (withLink && isTF2Items) {
+                const displayName = bot.options.tradeSummary.showPureInEmoji
+                    ? pureEmoji.has(sku)
+                        ? pureEmoji.get(sku)
+                        : name
+                    : name;
+                if (humanReadable) {
+                    summary.push(
+                        `• [${displayName}](https://pricedb.io/item/${sku})${skuTag}${amountTag}${stockTag}`
+                    );
+                } else {
+                    summary.push(`[${displayName}](https://pricedb.io/item/${sku})${amountTag}${stockTag}`);
+                }
+            } else if (humanReadable) {
                 summary.push(
-                    `[${
-                        bot.options.tradeSummary.showPureInEmoji
-                            ? pureEmoji.has(sku)
-                                ? pureEmoji.get(sku)
-                                : name
-                            : name
-                    }](https://pricedb.io/item/${sku})${amount > 1 ? ` x${amount}` : ''} (${
-                        (summaryAccepted || summaryInProcess) && oldStock !== null ? `${oldStock} → ` : ''
-                    }${
-                        which === 'our'
-                            ? summaryInProcess
-                                ? currentStock - amount
-                                : currentStock
-                            : summaryInProcess
-                            ? currentStock + amount
-                            : currentStock
-                    }${entry ? `/${entry.max}` : ''})`
+                    `• ${name}${skuTag}${amountTag}${
+                        ['review-partner', 'declined'].includes(type) ? '' : stockTag
+                    }`
                 );
             } else {
                 summary.push(
-                    `${name}${amount > 1 ? ` x${amount}` : ''}${
-                        ['review-partner', 'declined'].includes(type)
-                            ? ''
-                            : ` (${(summaryAccepted || summaryInProcess) && oldStock !== null ? `${oldStock} → ` : ''}${
-                                  which === 'our'
-                                      ? summaryInProcess
-                                          ? currentStock - amount
-                                          : currentStock
-                                      : summaryInProcess
-                                      ? currentStock + amount
-                                      : currentStock
-                              }${entry ? `/${entry.max}` : ''})`
+                    `${name}${amountTag}${
+                        ['review-partner', 'declined'].includes(type) ? '' : stockTag
                     }`
                 );
             }
         } else {
             if (withLink && isTF2Items) {
-                summary.push(
-                    `[${
-                        bot.options.tradeSummary.showPureInEmoji
-                            ? pureEmoji.has(sku)
-                                ? pureEmoji.get(sku)
-                                : name
-                            : name
-                    }](https://pricedb.io/item/${sku})${amount > 1 ? ` x${amount}` : ''}`
-                );
+                const displayName = bot.options.tradeSummary.showPureInEmoji
+                    ? pureEmoji.has(sku)
+                        ? pureEmoji.get(sku)
+                        : name
+                    : name;
+                if (humanReadable) {
+                    summary.push(`• [${displayName}](https://pricedb.io/item/${sku})${skuTag}${amountTag}`);
+                } else {
+                    summary.push(`[${displayName}](https://pricedb.io/item/${sku})${amountTag}`);
+                }
+            } else if (humanReadable) {
+                summary.push(`• ${name}${skuTag}${amountTag}`);
             } else {
-                summary.push(name + (amount > 1 ? ` x${amount}` : ''));
+                summary.push(name + amountTag);
             }
         }
     }
@@ -270,6 +340,15 @@ function getSummary(
 
     if (summaryCount === 0) {
         return 'nothing';
+    }
+
+    if (humanReadable) {
+        let left = 0;
+        if (isCompressSummary && summaryCount > 15) {
+            left = summaryCount - 15;
+            summary.splice(15);
+        }
+        return summary.join('\n') + (left > 0 ? `\n• …and ${left} more items` : '');
     }
 
     if (withLink) {

@@ -38,6 +38,20 @@ function settingsLines(entry: Entry, isPremium: boolean): string {
         `🔄 **Autoprice buy:** ${boolEmoji(entry.autopriceBuy)}`,
         `½🔄 **isPartialPriced:** ${boolEmoji(entry.isPartialPriced)}`
     ];
+    if (entry.minBuy || entry.maxBuy) {
+        lines.push(
+            `📏 **Buy range:** ${entry.minBuy ? entry.minBuy.toString() : '—'} → ${
+                entry.maxBuy ? entry.maxBuy.toString() : '—'
+            }`
+        );
+    }
+    if (entry.minSell || entry.maxSell) {
+        lines.push(
+            `📏 **Sell range:** ${entry.minSell ? entry.minSell.toString() : '—'} → ${
+                entry.maxSell ? entry.maxSell.toString() : '—'
+            }`
+        );
+    }
     if (isPremium) {
         lines.push(`📢 **Promoted:** ${boolEmoji(entry.promoted === 1)}`);
     }
