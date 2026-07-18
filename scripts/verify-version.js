@@ -55,10 +55,17 @@ const checks = [
     },
     {
         file: 'scripts/restore-github-releases.sh',
-        test: (content) =>
-            content.includes(`[v${version}]=`) &&
-            (content.includes(`v${version} -`) || content.includes(`v${version} —`)),
-        label: 'restore-github-releases.sh entry for current version'
+        test: (content) => {
+            const tagsBlock = content.match(/declare -A TAGS=\([\s\S]*?\n\)/);
+            const titlesBlock = content.match(/declare -A TITLES=\([\s\S]*?\n\)/);
+            return (
+                tagsBlock &&
+                tagsBlock[0].includes(`[v${version}]=`) &&
+                titlesBlock &&
+                (titlesBlock[0].includes(`v${version} -`) || titlesBlock[0].includes(`v${version} —`))
+            );
+        },
+        label: 'restore-github-releases.sh TAGS/TITLES entry for current version'
     }
 ];
 
