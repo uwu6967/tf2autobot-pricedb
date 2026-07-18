@@ -379,19 +379,6 @@ export const DEFAULTS: JsonOptions = {
         }
     },
 
-    hive: {
-        enable: false,
-        apiUrl: 'http://127.0.0.1:3950',
-        autoRebalance: true,
-        useAutokeysBands: true,
-        minKeys: 100,
-        maxKeys: 500,
-        minRefined: 100,
-        maxRefined: 200,
-        maxKeysPerTransfer: 10,
-        maxRefinedPerTransfer: 50,
-        cooldownSeconds: 900
-    },
 
     crafting: {
         manual: false,
@@ -1613,21 +1600,6 @@ interface Autokeys {
     accept?: Accept;
 }
 
-interface Hive {
-    enable?: boolean;
-    apiUrl?: string;
-    autoRebalance?: boolean;
-    /** When true, heartbeat bands follow autokeys.min/max Keys/Refined */
-    useAutokeysBands?: boolean;
-    minKeys?: number;
-    maxKeys?: number;
-    minRefined?: number;
-    maxRefined?: number;
-    maxKeysPerTransfer?: number;
-    maxRefinedPerTransfer?: number;
-    cooldownSeconds?: number;
-}
-
 interface Banking {
     enable?: boolean;
 }
@@ -2293,7 +2265,6 @@ export interface JsonOptions {
     details?: Details;
     statistics?: Statistics;
     autokeys?: Autokeys;
-    hive?: Hive;
     crafting?: Crafting;
     offerReceived?: OfferReceived;
     manualReview?: ManualReview;

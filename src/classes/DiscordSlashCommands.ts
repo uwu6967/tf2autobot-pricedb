@@ -55,7 +55,6 @@ export const BOT_COMMAND_NAMES = [
     'autoadd',
     'stopautoadd',
     'autokeys',
-    'hive',
     'deposit',
     'd',
     'withdraw',
@@ -117,7 +116,6 @@ const ADMIN_ONLY = new Set([
     'autoadd',
     'stopautoadd',
     'autokeys',
-    'hive',
     'deposit',
     'd',
     'withdraw',
@@ -409,67 +407,6 @@ function autokeysOptions() {
     ];
 }
 
-function hiveOptions() {
-    return [
-        {
-            name: 'action',
-            description: 'Hive action',
-            type: ApplicationCommandOptionType.String as const,
-            required: false,
-            choices: [
-                { name: 'status', value: 'status' },
-                { name: 'enable', value: 'enable' },
-                { name: 'disable', value: 'disable' },
-                { name: 'link', value: 'link' },
-                { name: 'accept', value: 'accept' },
-                { name: 'unlink', value: 'unlink' },
-                { name: 'push', value: 'push' },
-                { name: 'bots', value: 'bots' }
-            ]
-        },
-        {
-            name: 'steamid',
-            description: 'Partner SteamID64 (link/accept/unlink/push)',
-            type: ApplicationCommandOptionType.String as const,
-            required: false
-        },
-        {
-            name: 'keys',
-            description: 'Keys to push',
-            type: ApplicationCommandOptionType.Integer as const,
-            required: false,
-            min_value: 0
-        },
-        {
-            name: 'ref',
-            description: 'Refined to push',
-            type: ApplicationCommandOptionType.Number as const,
-            required: false,
-            min_value: 0
-        }
-    ];
-}
-
-function buildHiveSlashMessage(options: SlashOptionReader): string {
-    const action = options.getString('action') || 'status';
-    if (action === 'status' || action === 'enable' || action === 'disable' || action === 'bots') {
-        return `!hive ${action}`;
-    }
-    const steamid = options.getString('steamid');
-    if (action === 'link' || action === 'accept' || action === 'unlink') {
-        return steamid ? `!hive ${action} ${steamid}` : `!hive ${action}`;
-    }
-    if (action === 'push') {
-        const keys = options.getInteger('keys') ?? 0;
-        const ref = options.getNumber('ref') ?? 0;
-        if (!steamid) {
-            return '!hive push';
-        }
-        return `!hive push keys=${keys}&ref=${ref}&to=${steamid}`;
-    }
-    return '!hive status';
-}
-
 function buildAutokeysSlashParams(options: SlashOptionReader): string {
     const parts: string[] = [];
     const enable = options.getBoolean('enable');
@@ -550,7 +487,6 @@ export function getSlashCommandDefinitions(): RESTPostAPIChatInputApplicationCom
         cmd('refreshlist', 'Refresh backpack.tf listings (admin)'),
         cmd('autokeys', 'Show or change Autokeys settings (set options are admin-only)', autokeysOptions()),
         cmd('refreshautokeys', 'Force a refresh of Autokeys settings (admin)'),
-        cmd('hive', 'Pure Hive: share keys/ref with linked fork bots (admin)', hiveOptions()),
         cmd('add', 'Add a pricelist entry (admin)', pricelistListingOptions(true)),
         cmd('update', 'Update a pricelist entry (admin)', pricelistListingOptions(false)),
         cmd('remove', 'Remove a pricelist entry (admin)', lookupOnlyOptions('Item to remove')),
@@ -699,8 +635,6 @@ export function resolveSlashRoute(interactionName: string, options: SlashOptionR
         }
         case 'refreshautokeys':
             return { prefixMessage: '!refreshautokeys', adminOnly: true };
-        case 'hive':
-            return { prefixMessage: buildHiveSlashMessage(options), adminOnly: true };
         case 'add':
             return routeFromPricelistCommand('add', options, true);
         case 'update':

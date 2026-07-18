@@ -141,7 +141,6 @@ export default class HelpCommands {
                         `unhalt - Unpause the trading ▶ (enables listings, commands, trades). Do not spam this.`,
                         `haltstatus - Get the info whether the bot is paused or not ⏯`,
                         `refreshautokeys - Refresh the bot's autokeys settings  `,
-                        `hive [status|enable|disable|link|accept|unlink|push|bots] - Pure Hive keys/ref sharing 🐝`,
                         `refreshlist - Refresh sell listings 🔄`,
                         `changeName name=<new_name> - Change the bot's name    `,
                         `avatar <image_URL> - Change the bot's avatar   `,
