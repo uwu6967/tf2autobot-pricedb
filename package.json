@@ -12,7 +12,11 @@
         "prelint": "npm run eslint-check",
         "lint": "eslint .",
         "prettier": "prettier --check src/**/* && prettier --check *.json",
-        "eslint-check": "npx eslint-config-prettier src/app.ts"
+        "eslint-check": "npx eslint-config-prettier src/app.ts",
+        "verify-version": "node scripts/verify-version.js",
+        "verify-release-author": "node scripts/verify-release-author.js",
+        "verify-panel-ipc": "node scripts/verify-panel-ipc.js",
+        "verify": "npm run verify-version && npm run verify-panel-ipc && npm run build && npm run verify-release-author"
     },
     "engines": {
         "node": ">= 22.0.0"

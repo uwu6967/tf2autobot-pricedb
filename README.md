@@ -6,6 +6,10 @@ This repository is a personal fork built on top of the [pricedb.io edition](http
 
 **Public blank-bot releases:** [uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb/releases) (use with [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)).
 
+**Current version:** 1.0.6
+
+Latest release: [v1.0.6](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.6)
+
 Clone a clean install:
 
 ```bash
