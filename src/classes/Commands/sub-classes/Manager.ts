@@ -566,6 +566,105 @@ export default class ManagerCommands {
             });
     }
 
+    async hiveCommand(steamID: SteamID, message = '!hive'): Promise<void> {
+        if (!this.bot.isAdmin(steamID)) {
+            return this.bot.sendMessage(steamID, '⛔ Only admins can use Pure Hive commands.');
+        }
+
+        const hive = this.bot.handler.hive;
+        const after = message.includes(' ') ? CommandParser.removeCommand(message).trim() : '';
+        const parts = after ? after.split(/\s+/) : [];
+        const sub = (parts[0] || 'status').toLowerCase();
+
+        try {
+            if (sub === 'status' || sub === '') {
+                await hive.tick();
+                return this.bot.sendMessage(
+                    steamID,
+                    (isDiscordRedirect(steamID.redirectAnswerTo) ? '/pre2' : '/pre ') + hive.getStatusSummary()
+                );
+            }
+
+            if (sub === 'enable' || sub === 'disable') {
+                const optionsCmd = new OptionsCommands(this.bot);
+                const ok = await optionsCmd.updateOptionsCommandAsync(
+                    steamID,
+                    `!config hive.enable=${sub === 'enable'}`,
+                    { silent: true }
+                );
+                if (!ok) {
+                    return;
+                }
+                if (sub === 'enable') {
+                    hive.start();
+                } else {
+                    hive.stop();
+                }
+                return this.bot.sendMessage(steamID, `✅ Pure Hive ${sub}d.`);
+            }
+
+            if (sub === 'link') {
+                const to = parts[1];
+                if (!to) {
+                    return this.bot.sendMessage(steamID, '❌ Usage: !hive link <steamid64>');
+                }
+                return this.bot.sendMessage(steamID, await hive.link(to));
+            }
+
+            if (sub === 'accept') {
+                const from = parts[1];
+                if (!from) {
+                    return this.bot.sendMessage(steamID, '❌ Usage: !hive accept <steamid64>');
+                }
+                return this.bot.sendMessage(steamID, await hive.accept(from));
+            }
+
+            if (sub === 'unlink') {
+                const other = parts[1];
+                if (!other) {
+                    return this.bot.sendMessage(steamID, '❌ Usage: !hive unlink <steamid64>');
+                }
+                return this.bot.sendMessage(steamID, await hive.unlink(other));
+            }
+
+            if (sub === 'push') {
+                // !hive push keys=1&ref=10&to=7656...
+                const raw = after.replace(/^push\s*/i, '');
+                const p = CommandParser.parseParams(raw.includes('=') ? raw : '');
+                const to = String(p.to || '');
+                const keys = Number(p.keys ?? 0) || 0;
+                const refined = Number(p.ref ?? p.refined ?? 0) || 0;
+                if (!/^\d{17}$/.test(to) || (keys < 1 && refined < 1)) {
+                    return this.bot.sendMessage(
+                        steamID,
+                        '❌ Usage: !hive push keys=<n>&ref=<n>&to=<steamid64>'
+                    );
+                }
+                return this.bot.sendMessage(steamID, await hive.push(to, keys, refined));
+            }
+
+            if (sub === 'bots') {
+                const bots = await hive.refreshDirectory();
+                const lines = bots.map(
+                    b =>
+                        `• ${b.name} (${b.steamId}) — ${b.keys} keys, ${b.refined} ref | bands k ${b.minKeys}-${b.maxKeys} r ${b.minRefined}-${b.maxRefined}`
+                );
+                return this.bot.sendMessage(
+                    steamID,
+                    (isDiscordRedirect(steamID.redirectAnswerTo) ? '/pre2' : '/pre ') +
+                        `🐝 Hive directory (${bots.length}):\n${lines.join('\n') || '• (empty)'}`
+                );
+            }
+
+            return this.bot.sendMessage(
+                steamID,
+                '❌ Usage: !hive [status|enable|disable|link|accept|unlink|push|bots]'
+            );
+        } catch (err) {
+            return this.bot.sendMessage(steamID, `❌ Hive error: ${(err as Error).message}`);
+        }
+    }
+
     async autokeysCommand(steamID: SteamID, message = '!autokeys'): Promise<void> {
         const opt = this.bot.options.commands.autokeys;
         if (!opt.enable) {

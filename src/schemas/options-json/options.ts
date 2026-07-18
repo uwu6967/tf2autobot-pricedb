@@ -1351,6 +1351,58 @@ export const optionsSchema: jsonschema.Schema = {
             ],
             additionalProperties: false
         },
+        hive: {
+            type: 'object',
+            properties: {
+                enable: {
+                    type: 'boolean'
+                },
+                apiUrl: {
+                    type: 'string'
+                },
+                autoRebalance: {
+                    type: 'boolean'
+                },
+                useAutokeysBands: {
+                    type: 'boolean'
+                },
+                minKeys: {
+                    type: 'integer'
+                },
+                maxKeys: {
+                    $schema: '#/definitions/nonNegativeInteger'
+                },
+                minRefined: {
+                    type: 'number'
+                },
+                maxRefined: {
+                    type: 'number'
+                },
+                maxKeysPerTransfer: {
+                    type: 'integer'
+                },
+                maxRefinedPerTransfer: {
+                    type: 'number'
+                },
+                cooldownSeconds: {
+                    type: 'integer'
+                }
+            },
+            required: [
+                'enable',
+                'apiUrl',
+                'autoRebalance',
+                'useAutokeysBands',
+                'minKeys',
+                'maxKeys',
+                'minRefined',
+                'maxRefined',
+                'maxKeysPerTransfer',
+                'maxRefinedPerTransfer',
+                'cooldownSeconds'
+            ],
+            additionalProperties: false
+        },
         autokeys: {
             type: 'object',
             properties: {

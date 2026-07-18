@@ -31,6 +31,8 @@ import CartQueue from '../Carts/CartQueue';
 import Inventory from '../Inventory';
 import TF2Inventory from '../TF2Inventory';
 import Autokeys from '../Autokeys/Autokeys';
+import HiveClient from '../Hive/HiveClient';
+import { HIVE_JOB_MESSAGE_PREFIX } from '../Hive/types';
 
 import { Paths } from '../../resources/paths';
 import log from '../../lib/logger';
@@ -62,6 +64,8 @@ export default class MyHandler extends Handler {
     readonly commands: Commands;
 
     readonly autokeys: Autokeys;
+
+    readonly hive: HiveClient;
 
     readonly cartQueue: CartQueue;
 
@@ -209,6 +213,7 @@ export default class MyHandler extends Handler {
         this.commands = new Commands(bot, priceSource);
         this.cartQueue = new CartQueue(bot);
         this.autokeys = new Autokeys(bot);
+        this.hive = new HiveClient(bot);
 
         this.paths = genPaths(this.opt.steamAccountName);
 
@@ -280,6 +285,9 @@ export default class MyHandler extends Handler {
 
         // Auto sell and buy keys if ref < minimum
         this.autokeys.check();
+
+        // Pure Hive — opt-in keys/ref sharing with linked fork bots
+        this.hive.start();
 
         // Sort the inventory after crafting / combining metal
         this.sortInventory();
@@ -373,6 +381,8 @@ export default class MyHandler extends Handler {
     }
 
     onShutdown(): Promise<void> {
+        this.hive.stop();
+
         if (this.poller) {
             clearInterval(this.poller);
         }
@@ -956,6 +966,19 @@ export default class MyHandler extends Handler {
             // Using boolean because items dict always needs to be saved
             offer.log('info', 'contains items not from TF2, declining...');
             return { action: 'decline', reason: '🟨_CONTAINS_NON_TF2' };
+        }
+
+        // Pure Hive: auto-accept pure-only inbound transfers from mutually linked bots
+        const hiveJobId = this.hive.transfer.matchIncomingHiveOffer(
+            partnerSteamID,
+            itemsDict.our,
+            itemsDict.their,
+            offer.message || ''
+        );
+        if (hiveJobId) {
+            offer.data('hiveJobId', hiveJobId);
+            offer.log('info', `Pure Hive transfer ${hiveJobId}, accepting...`);
+            return { action: 'accept', reason: 'HIVE_TRANSFER' };
         }
 
         const offerMessage = offer.message.toLowerCase();
@@ -2284,6 +2307,15 @@ export default class MyHandler extends Handler {
                     // Auto sell and buy keys if ref < minimum
 
                     this.autokeys.check();
+
+                    const hiveJobId =
+                        (offer.data('hiveJobId') as string) ||
+                        (offer.message?.startsWith(HIVE_JOB_MESSAGE_PREFIX)
+                            ? offer.message.slice(HIVE_JOB_MESSAGE_PREFIX.length).trim()
+                            : '');
+                    if (hiveJobId && this.hive.enabled) {
+                        void this.hive.markJobDone(hiveJobId, offer.id);
+                    }
 
                     const result = await processAccepted(offer, this.bot, timeTakenToComplete);
 
