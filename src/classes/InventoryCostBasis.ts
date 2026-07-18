@@ -426,4 +426,74 @@ export default class InventoryCostBasis {
         await this.save();
         log.warn('Cleared all FIFO entries');
     }
+
+    /**
+     * Remove every FIFO lot for one SKU.
+     */
+    async clearSku(sku: string): Promise<number> {
+        const before = this.fifoEntries.length;
+        this.fifoEntries = this.fifoEntries.filter(entry => entry.sku !== sku);
+        const removed = before - this.fifoEntries.length;
+        if (removed > 0) {
+            await this.save();
+            log.info(`Cleared ${removed} FIFO entries for ${sku}`);
+        }
+        return removed;
+    }
+
+    /**
+     * Manually set FIFO lots for a SKU (blank deposits / correcting history).
+     * Paid cost per unit = costKeys/costMetal (diff left at 0).
+     */
+    async setSkuLots(
+        sku: string,
+        quantity: number,
+        costKeys: number,
+        costMetal: number,
+        mode: 'replace' | 'append' = 'replace',
+        tradeId = 'manual-setcost'
+    ): Promise<{ removed: number; added: number }> {
+        if (!Number.isFinite(quantity) || quantity < 0 || !Number.isInteger(quantity)) {
+            throw new Error('quantity must be a non-negative integer');
+        }
+        if (quantity > 5000) {
+            throw new Error('quantity cannot exceed 5000 per command');
+        }
+        if (!Number.isFinite(costKeys) || !Number.isFinite(costMetal)) {
+            throw new Error('keys/metal must be numbers');
+        }
+        if (costKeys < 0 || costMetal < 0) {
+            throw new Error('keys/metal cannot be negative');
+        }
+
+        let removed = 0;
+        if (mode === 'replace') {
+            const before = this.fifoEntries.length;
+            this.fifoEntries = this.fifoEntries.filter(entry => entry.sku !== sku);
+            removed = before - this.fifoEntries.length;
+        }
+
+        const keyPriceMetal = this.bot.pricelist.getKeyPrice.metal;
+        const now = Date.now();
+        for (let i = 0; i < quantity; i++) {
+            this.fifoEntries.push({
+                sku,
+                costKeys,
+                costMetal,
+                diffKeys: 0,
+                diffMetal: 0,
+                tradeId,
+                timestamp: now + i,
+                keyPriceMetal,
+                diffVersion: CURRENT_DIFF_VERSION
+            });
+        }
+
+        await this.save();
+        log.info(
+            `Manual FIFO ${mode} for ${sku}: removed ${removed}, added ${quantity} ` +
+                `@ ${costKeys}k ${costMetal}r [${tradeId}]`
+        );
+        return { removed, added: quantity };
+    }
 }

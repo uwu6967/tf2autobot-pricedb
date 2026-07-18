@@ -42,10 +42,11 @@ declare -A TAGS=(
     [v1.0.8]=7b60070400f08703951a5da3389ec3626c994d45
     [v1.0.9]=17091b891a0a50ace6ff0f56c978bdea057cd80a
     [v1.0.10]=534a84927bdc22d249ef9eb1e6f9f7ef3076f25a
+    [v1.0.11]=REPLACE_AFTER_COMMIT
 )
 
-LATEST_TAG="v1.0.10"
-RELEASE_TAGS=(v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9 v1.0.10)
+LATEST_TAG="v1.0.11"
+RELEASE_TAGS=(v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9 v1.0.10 v1.0.11)
 
 declare -A TITLES=(
     [v1.0.0]="v1.0.0 - uwu6967 blank-bot fork"
@@ -59,6 +60,7 @@ declare -A TITLES=(
     [v1.0.8]="v1.0.8 — Pure Hive keys/ref sharing"
     [v1.0.9]="v1.0.9 — Pure Hive moved to separate fork"
     [v1.0.10]="v1.0.10 — FIFO purchase history and sell reprice"
+    [v1.0.11]="v1.0.11 — !setcost + full wiki rework"
 )
 
 for tag in "${RELEASE_TAGS[@]}"; do

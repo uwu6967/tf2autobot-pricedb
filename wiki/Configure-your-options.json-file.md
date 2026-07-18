@@ -20,9 +20,10 @@ You can edit this file directly or through the [GUI Panel](GUI-Panel) settings p
 |---|---|
 | `steamConnection` | Auto-reconnect settings |
 | `globalDisable` | Disable chat messages, greetings, commands |
-| `miscSettings` | Core bot behaviour (counter offers, listings, game, ECP, etc.) |
+| `miscSettings` | Core behaviour (counters, listings, ECP, **manncoStore**, …) |
 | `sendAlert` | Discord/webhook alert toggles |
-| `pricelist` | Pricelist behaviour, PPU, autoprice |
+| `pricelist` | PPU, partial price update, min profit scrap |
+| `autokeys` | Automatic key banking |
 | `trade` | Trade acceptance rules |
 | `discord` | Discord integration |
 | `banned` | Ban list |
@@ -30,6 +31,15 @@ You can edit this file directly or through the [GUI Panel](GUI-Panel) settings p
 | `normalize` | SKU normalization rules |
 
 The full example at [`.example/options.json`](https://github.com/uwu6967/tf2autobot-pricedb/blob/master/.example/options.json) is the authoritative reference for every available key.
+
+### Fork-specific pointers
+
+| Topic | Where |
+|---|---|
+| Partial autoprice (buy/sell only) | [Partial Autoprice](Partial-Autoprice) — often set via panel / pricelist entry |
+| FIFO / `minProfitScrap` | `pricelist.partialPriceUpdate` — [Cost Basis & FIFO](Cost-Basis-and-FIFO) |
+| Mannco | `miscSettings.manncoStore.enable` — [Mannco.store](Mannco-Store) |
+| Pure Hive | **Not in this blank bot** — [Pure Hive](Pure-Hive) |
 
 ## globalDisable
 

@@ -49,22 +49,27 @@ KEEP=["76561198000000001"]
 
 | Variable | Default | Description |
 |---|---|---|
-| `PRICEDB_STORE_API_KEY` | — | API key for pricedb.io / crit.tf store mirroring |
+| `ENABLE_SOCKET` | `true` | Enable pricedb.io socket pricer |
 | `CUSTOM_PRICER_URL` | — | Custom pricer socket URL |
 | `CUSTOM_PRICER_API_TOKEN` | — | Token for custom pricer |
-| `ENABLE_SOCKET` | `true` | Enable pricedb.io socket pricer |
+
+Store API key is listed under optional integrations below.
 
 ## Optional integrations
 
 | Variable | Default | Description |
 |---|---|---|
-| `DISCORD_BOT_TOKEN` | — | Discord bot token for alerts and commands |
+| `DISCORD_BOT_TOKEN` | — | Discord bot token for alerts and slash commands — [Discord](Discord) |
+| `PRICEDB_STORE_API_KEY` | — | pricedb.io / crit.tf store mirroring — [PriceDB Store](PriceDB-Store) |
+| `MANNCO_STORE_API_KEY` | — | Mannco.store API (often set in ecosystem) — [Mannco](Mannco-Store) |
 | `MPTF_API_KEY` | — | marketplace.tf API key |
 | `STEAMSUPPLY_API_KEY` | — | steam.supply inventory API |
 | `STEAMAPIS_API_KEY` | — | steamapis.com inventory API |
 | `EXPRESSLOAD_API_KEY` | — | expressload.io inventory API |
 | `JOURNAL_TF_ENABLE` | `false` | Enable Journal.tf integration |
 | `JOURNAL_TF_API_KEY` | — | Journal.tf API key |
+
+> **Hive tokens** (`HIVE_TOKEN`, `HIVE_API_URL`) belong on the [Hive bot fork](Pure-Hive), not this blank bot.
 
 ## IPC and GUI panel
 
@@ -135,11 +140,12 @@ files/<STEAM_ACCOUNT_NAME>/
 ├── pricelist.json
 ├── polldata.json
 ├── refreshToken.txt
+├── … FIFO / cost-basis data …
 └── ...
 ```
 
-The `files/` directory is gitignored.
+The `files/` directory is gitignored — **never commit it**.
 
 ## Next steps
 
-→ [options.json Reference](Configure-your-options.json-file)
+→ [options.json Reference](Configure-your-options.json-file) · [Features](Features) · [Updating](Updating)

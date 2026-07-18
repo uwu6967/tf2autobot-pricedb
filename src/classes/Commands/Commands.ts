@@ -242,6 +242,8 @@ export default class Commands {
                 this.pManager.removebulkCommand(steamID, message);
             } else if (command === 'get' && isAdmin) {
                 this.pManager.getCommand(steamID, message);
+            } else if (command === 'setcost' && isAdmin) {
+                void this.pManager.setCostCommand(steamID, message);
             } else if (command === 'getall' && isAdmin) {
                 void this.pManager.getAllCommand(steamID, message);
             } else if (command === 'ppu' && isAdmin) {

@@ -8,9 +8,17 @@
 * [GUI Panel](GUI-Panel)
 * [Configuring the Bot](Configuring-the-Bot)
 * [options.json Reference](Configure-your-options.json-file)
+* [Updating](Updating)
 
 ### Features
+* [Features Overview](Features)
+* [Partial Autoprice](Partial-Autoprice)
+* [Cost Basis & FIFO](Cost-Basis-and-FIFO)
+* [Discord](Discord)
 * [PriceDB Store](PriceDB-Store)
+* [Mannco.store](Mannco-Store)
+* [Pure Hive](Pure-Hive)
+* [Panel IPC](Panel-IPC)
 
 ### Help
 * [Common Errors](Common-Errors)
@@ -21,5 +29,7 @@
 
 **Repositories**
 * [Bot](https://github.com/uwu6967/tf2autobot-pricedb)
-* [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel)
-* [TF2Autobot (upstream)](https://github.com/TF2Autobot/tf2autobot)
+* [Panel](https://github.com/uwu6967/tf2autobot-gui-panel)
+* [Hive bot](https://github.com/uwu6967/tf2autobot-pricedb-hive)
+* [Hive API](https://github.com/uwu6967/tf2autobot-pure-hive)
+* [Upstream TF2Autobot](https://github.com/TF2Autobot/tf2autobot)

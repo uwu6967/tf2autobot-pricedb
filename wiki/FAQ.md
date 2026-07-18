@@ -2,109 +2,65 @@
 
 ## General
 
-### What is this project?
+### Is this the same as TF2Autobot?
 
-A fork of [TF2Autobot](https://github.com/TF2Autobot/tf2autobot) that uses [pricedb.io](https://pricedb.io) for pricing and is designed to run with the [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel).
+It is a **fork** of the PriceDB / TF2Autobot line. Setup feels familiar, but pricing defaults to **pricedb.io**, and this fork adds FIFO cost basis, partial autoprice, Discord UX, panel IPC fixes, Mannco, etc. See [Features](Features).
 
 ### Do I need the GUI panel?
 
-Yes — for the intended setup. The panel is how you manage your pricelist, review trades, edit settings, and track profit. The bot runs headless and handles Steam in the background.
+Strongly recommended. The panel is how you manage pricelist, Unlisted Stock, and settings day to day. The bot still does all Steam work.
 
-### Can I run the bot without the panel?
+### Where is Pure Hive?
 
-Technically yes (disable `IPC` and use Steam commands / Discord), but the panel is the recommended workflow for this fork.
+On a **separate** fork: [tf2autobot-pricedb-hive](https://github.com/uwu6967/tf2autobot-pricedb-hive) + [tf2autobot-pure-hive](https://github.com/uwu6967/tf2autobot-pure-hive). This blank bot does **not** include Hive. See [Pure Hive](Pure-Hive).
 
-### Is this the same as the original TF2Autobot?
+## Pricing & stock
 
-Same core trading engine, but with pricedb.io integration, store mirroring, Journal.tf, ECP, improved PPU, and other changes. See [Credits](Credits).
+### What is partial autoprice?
 
-## Setup
+Live price on **one** side (buy or sell) while the other is manual. [Guide](Partial-Autoprice).
 
-### What Node.js version do I need?
+### Why did my manual price flip back to live?
 
-**22+** for the bot. The panel supports 18+ but 22 is recommended.
+On this fork, setting a manual buy/sell turns off that side’s live flag unless you keep it on. If both sides still look “live”, check panel toggles / entry flags.
 
-### Where do I put my Steam password?
+### What is FIFO / purchase history?
 
-In the bot's `.env` file only. Never commit it. The panel does not need your Steam password.
+Each bought unit stores paid cost. `!get` shows lots still in stock. [Cost Basis & FIFO](Cost-Basis-and-FIFO).
 
-### Where is options.json?
+### I deposited items from my main with no buy trade — cost history is empty
 
+Use `!setcost` (or `/setcost`) to seed lots, e.g.:
+
+```text
+!setcost sku=…&metal=25&amount=50&mode=replace
 ```
-files/<your_steam_username>/options.json
-```
 
-Created on first run or by copying `.example/options.json`.
+### Can sell update itself after I sell one?
 
-### How do I find my SteamID64?
+Yes — for non-full-autoprice entries, sell can reprice from the **next** FIFO lot + min profit scrap.
 
-Use [steamid.io](https://steamid.io/) or the panel's admin login.
+## Discord & updates
 
-## Trading
+### Steam chat gets me banned?
 
-### How does pricing work?
+Use `globalDisable.messages` / `greeting` and prefer Discord + panel. [Discord](Discord).
 
-The bot connects to pricedb.io via socket for live prices. Your `pricelist.json` defines which items you buy/sell and at what margins.
+### How do I update?
 
-### What is PPU (Partial Price Update)?
-
-When you buy an item, PPU queues that buy price. If the market dips, your sell listing won't drop below the queued buy price until the threshold expires. This prevents selling at a loss during temporary dips.
-
-### What is ECP (Easy Copy Paste)?
-
-A feature that replaces item names in listing notes with easy-to-copy trade commands like `buy_Burning_Team_Captain`. Enable with `miscSettings.ecp` and use `%ecp_item%` in listing notes.
-
-### Should I disable Steam chat?
-
-**Yes.** Valve has been banning bots that send chat messages. Set `globalDisable.messages` and `globalDisable.greeting` to `true`. Use the panel and Discord instead.
-
-## PriceDB Store
-
-### What is the pricedb.io store?
-
-A personal storefront on crit.tf where buyers can see your sell listings. This fork can auto-mirror backpack.tf sell listings to your store.
-
-### Do buy listings get mirrored?
-
-No — only sell listings.
+`!updaterepo` on PM2+git, or pull the release tag. [Updating](Updating).
 
 ## Panel
 
-### Can I access the panel remotely?
+### “no bot found”
 
-Yes. Deploy both bot and panel on a VPS. See the [panel TUTORIAL.md](https://github.com/uwu6967/tf2autobot-gui-panel/blob/main/TUTORIAL.md) for VPS/SSL setup.
+Bot not running, `IPC` off, or panel session stuck on an old SteamID — restart panel after account switches. [Panel IPC](Panel-IPC).
 
-### Does the panel need my Steam secrets?
+### Unlisted Stock empty / errors
 
-No. Only the bot needs Steam credentials. The panel optionally uses Steam OpenID for admin authentication.
+Need a bot build with inventory IPC (this fork). Unique items may use asset ids.
 
-## Updating
+## Related
 
-### How do I update the bot?
-
-```bash
-git pull
-npm install
-npm run build
-```
-
-Restart the bot. Check release notes for `options.json` changes.
-
-### Will updating wipe my pricelist?
-
-No. Your data lives in `files/<username>/` which is separate from the source code.
-
-## Safety
-
-### Is it safe to run a trading bot?
-
-Trading bots carry risk — account bans, bad trades, API outages. Use at your own discretion. Keep secrets out of git, use strong admin restrictions on the panel, and run behind HTTPS on public servers.
-
-### What files should never be committed?
-
-- `.env`
-- `ecosystem.config.json`
-- `files/` directory
-- `logs/`
-
-All are gitignored by default.
+- [Common Errors](Common-Errors)  
+- [Getting Started](Getting-Started)
