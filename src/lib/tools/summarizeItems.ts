@@ -1,4 +1,4 @@
-import { TradeOffer, Prices } from '@tf2autobot/tradeoffer-manager';
+import { TradeOffer, Prices, ItemsDict, ItemsValue, OurTheirItemsDict } from '@tf2autobot/tradeoffer-manager';
 import SKU from '@tf2autobot/tf2-sku';
 import Currencies from '@tf2autobot/tf2-currencies';
 import Bot from '../../classes/Bot';
@@ -104,8 +104,54 @@ export default function listItems(offer: TradeOffer, bot: Bot, items: Items, isS
     return replace.itemName(list);
 }
 
+function countKeysInDict(dict: OurTheirItemsDict | null | undefined): number {
+    if (!dict) {
+        return 0;
+    }
+
+    let total = 0;
+    for (const priceKey in dict) {
+        if (!Object.prototype.hasOwnProperty.call(dict, priceKey)) {
+            continue;
+        }
+        if (priceKey !== '5021;6' && !priceKey.startsWith('5021;6;')) {
+            continue;
+        }
+
+        const raw = dict[priceKey];
+        const amount =
+            typeof raw === 'object' && raw !== null
+                ? Number((raw as { amount?: number }).amount ?? 0)
+                : Number(raw ?? 0);
+        if (Number.isFinite(amount) && amount > 0) {
+            total += amount;
+        }
+    }
+    return total;
+}
+
+function formatWorthInKeys(
+    side: { keys: number; metal: number } | undefined,
+    keyRate: number
+): { refStr: string; keysStr: string } | null {
+    if (!side || !(keyRate > 0)) {
+        return null;
+    }
+    const scrapTotal = new Currencies(side).toValue(keyRate);
+    const keysEquiv = scrapTotal / Currencies.toScrap(keyRate);
+    if (!Number.isFinite(keysEquiv)) {
+        return null;
+    }
+    return {
+        refStr: new Currencies(side).toString(),
+        keysStr: keysEquiv.toFixed(2)
+    };
+}
+
 function listPrices(offer: TradeOffer, bot: Bot, isSteamChat: boolean): string {
     const prices = offer.data('prices') as Prices;
+    const items = (offer.data('dict') as ItemsDict) || { our: null, their: null };
+    const value = offer.data('value') as ItemsValue;
 
     let text = '';
     const toJoin: string[] = [];
@@ -145,10 +191,62 @@ function listPrices(offer: TradeOffer, bot: Bot, isSteamChat: boolean): string {
         );
     }
 
+    const keysWeGave = countKeysInDict(items.our);
+    const keysTheyGave = countKeysInDict(items.their);
+    const keyRate =
+        value && typeof value.rate === 'number' && value.rate > 0
+            ? value.rate
+            : bot.pricelist.getKeyPrice.metal;
+
+    const extraLines: string[] = [];
+    extraLines.push(
+        isSteamChat
+            ? `🔑 Keys used: we gave ${keysWeGave} · they gave ${keysTheyGave}`
+            : `🔑 **Keys used:** we gave ${keysWeGave} · they gave ${keysTheyGave}`
+    );
+
+    const ourWorth = formatWorthInKeys(value?.our, keyRate);
+    const theirWorth = formatWorthInKeys(value?.their, keyRate);
+    if (ourWorth || theirWorth) {
+        // Same value both sides → one line; otherwise show both
+        const sameWorth =
+            ourWorth &&
+            theirWorth &&
+            ourWorth.refStr === theirWorth.refStr &&
+            ourWorth.keysStr === theirWorth.keysStr;
+
+        if (sameWorth && ourWorth) {
+            extraLines.push(
+                isSteamChat
+                    ? `💵 Worth: ${ourWorth.refStr} ≈ ${ourWorth.keysStr} keys (@ ${keyRate} ref/key)`
+                    : `💵 **Worth:** ${ourWorth.refStr} ≈ **${ourWorth.keysStr} keys** (@ ${keyRate} ref/key)`
+            );
+        } else {
+            if (ourWorth) {
+                extraLines.push(
+                    isSteamChat
+                        ? `💵 Worth (we gave): ${ourWorth.refStr} ≈ ${ourWorth.keysStr} keys (@ ${keyRate} ref/key)`
+                        : `💵 **Worth (we gave):** ${ourWorth.refStr} ≈ **${ourWorth.keysStr} keys** (@ ${keyRate} ref/key)`
+                );
+            }
+            if (theirWorth) {
+                extraLines.push(
+                    isSteamChat
+                        ? `💵 Worth (they gave): ${theirWorth.refStr} ≈ ${theirWorth.keysStr} keys (@ ${keyRate} ref/key)`
+                        : `💵 **Worth (they gave):** ${theirWorth.refStr} ≈ **${theirWorth.keysStr} keys** (@ ${keyRate} ref/key)`
+                );
+            }
+        }
+    }
+
+    const extrasJoined = isSteamChat ? extraLines.join('\n') : extraLines.join('@\n');
+
     if (toJoin.length > 0) {
         text = isSteamChat
-            ? '📜 Pricelist used\n- ' + toJoin.join(',\n- ')
-            : '📜 **Pricelist used**\n- ' + toJoin.join(',@\n- ');
+            ? '📜 Pricelist used\n- ' + toJoin.join(',\n- ') + '\n' + extrasJoined
+            : '📜 **Pricelist used**\n- ' + toJoin.join(',@\n- ') + '@\n' + extrasJoined;
+    } else {
+        text = extrasJoined;
     }
 
     return text;

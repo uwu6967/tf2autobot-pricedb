@@ -128,6 +128,10 @@ export default function summarize(
     if (humanReadable) {
         const ourValue = value ? new Currencies(value.our).toString() : null;
         const theirValue = value ? new Currencies(value.their).toString() : null;
+        const keyRate =
+            value && typeof value.rate === 'number' && value.rate > 0
+                ? value.rate
+                : bot.pricelist.getKeyPrice.metal;
         return {
             asked: formatHumanSide(
                 items.our,
@@ -137,7 +141,9 @@ export default function summarize(
                 withLink,
                 showStockChanges,
                 isCompressSummary,
-                ourValue
+                ourValue,
+                value?.our ?? null,
+                keyRate
             ),
             offered: formatHumanSide(
                 items.their,
@@ -147,7 +153,9 @@ export default function summarize(
                 withLink,
                 showStockChanges,
                 isCompressSummary,
-                theirValue
+                theirValue,
+                value?.their ?? null,
+                keyRate
             )
         };
     }
@@ -197,13 +205,29 @@ function formatHumanSide(
     withLink: boolean,
     showStockChanges: boolean,
     isCompressSummary: boolean,
-    totalValue: string | null
+    totalValue: string | null,
+    valueSide: { keys: number; metal: number } | null = null,
+    keyRate = 0
 ): string {
     const itemsLine = getSummary(dict, bot, which, type, withLink, showStockChanges, isCompressSummary, true);
-    if (itemsLine === 'nothing' || itemsLine === 'unknown items') {
-        return totalValue ? `${itemsLine}\n💵 Worth: **${totalValue}**` : itemsLine;
+    if (!totalValue) {
+        return itemsLine;
     }
-    return totalValue ? `${itemsLine}\n💵 Worth: **${totalValue}**` : itemsLine;
+
+    let keysBit = '';
+    if (valueSide && keyRate > 0) {
+        const scrapTotal = new Currencies(valueSide).toValue(keyRate);
+        const keysEquiv = scrapTotal / Currencies.toScrap(keyRate);
+        if (Number.isFinite(keysEquiv)) {
+            keysBit = ` (≈ **${keysEquiv.toFixed(2)} keys**)`;
+        }
+    }
+
+    const worthLine = `💵 Worth: **${totalValue}**${keysBit}`;
+    if (itemsLine === 'nothing' || itemsLine === 'unknown items') {
+        return `${itemsLine}\n${worthLine}`;
+    }
+    return `${itemsLine}\n${worthLine}`;
 }
 
 function getSummary(

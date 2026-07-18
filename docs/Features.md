@@ -33,6 +33,7 @@ See [Cost Basis & FIFO](Cost-Basis-and-FIFO).
 | Startup Unhalt | Unhalt without Steam chat spam |
 | Slash listings | `/add`, `/update`, `/get`, `/setcost`, … |
 | Multi-embed replies | e.g. get + purchase history |
+| Trade worth in keys | Offer summaries show keys exchanged + ≈ key worth |
 
 See [Discord](Discord).
 
