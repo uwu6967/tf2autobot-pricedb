@@ -326,10 +326,6 @@ export class Entry implements EntryData {
             sell: this.sell === null ? null : this.sell.toJSON(),
             buyUsd: this.buyUsd,
             sellUsd: this.sellUsd,
-            minBuy: this.minBuy === null ? null : this.minBuy.toJSON(),
-            maxBuy: this.maxBuy === null ? null : this.maxBuy.toJSON(),
-            minSell: this.minSell === null ? null : this.minSell.toJSON(),
-            maxSell: this.maxSell === null ? null : this.maxSell.toJSON(),
             promoted: this.promoted,
             group: this.group,
             note: this.note,
@@ -339,6 +335,19 @@ export class Entry implements EntryData {
             partialPriceTime: this.partialPriceTime,
             lastInStockTime: this.lastInStockTime
         };
+
+        if (this.minBuy) {
+            obj.minBuy = this.minBuy.toJSON();
+        }
+        if (this.maxBuy) {
+            obj.maxBuy = this.maxBuy.toJSON();
+        }
+        if (this.minSell) {
+            obj.minSell = this.minSell.toJSON();
+        }
+        if (this.maxSell) {
+            obj.maxSell = this.maxSell.toJSON();
+        }
 
         if (this.id) {
             obj.id = this.id;
@@ -1520,12 +1529,15 @@ export default class Pricelist extends EventEmitter {
                     continue;
                 }
 
-                const newestPrice = transformedPrices[sku];
+                // priceKey may be an asset id; pricer dump is keyed by item SKU
+                const lookupSku = currPrice.sku;
+                const newestPrice = transformedPrices[lookupSku];
 
                 if (!newestPrice) {
                     //item not found in new pricelist
-                    log.warn(`Item with sku ${sku} not found in new pricelist.`);
-                    this.failedUpdateOldPrices.push(sku);
+                    const label = sku === lookupSku ? sku : `${sku} (${lookupSku})`;
+                    log.warn(`Item with sku ${lookupSku} (priceKey ${sku}) not found in new pricelist.`);
+                    this.failedUpdateOldPrices.push(label);
                     continue;
                 }
 
@@ -1667,7 +1679,7 @@ export default class Pricelist extends EventEmitter {
                 const oldestPurchaseTime = currPrice.getOldestPurchaseTime();
                 const lastUpdateTime = oldestPurchaseTime || currPrice.partialPriceTime || currPrice.time;
                 const isNotExceedThreshold = Math.floor(Date.now() / 1000) - lastUpdateTime < ppu.thresholdInSeconds;
-                const isNotExcluded = !excludedSKU.includes(sku);
+                const isNotExcluded = !excludedSKU.includes(lookupSku);
 
                 //review max restriction
                 const maxRestrictionMet = ppu.removeMaxRestriction

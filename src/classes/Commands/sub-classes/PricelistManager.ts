@@ -19,7 +19,7 @@ import { formatCategoryList, normalizeBulkAddCategory, resolveCategorySkus, reso
 import { Item } from '../../IPricer';
 import { Currency } from 'src/types/TeamFortress2';
 import { isDiscordRedirect } from '../../../lib/discordRedirect';
-import { buildAddedEntryEmbed, buildUpdatedEntryEmbed } from '../../../lib/pricelistEntryEmbed';
+import { buildAddedEntryEmbed, buildUpdatedEntryEmbed, buildGetEntryEmbed } from '../../../lib/pricelistEntryEmbed';
 
 // Pricelist manager
 
@@ -1375,6 +1375,11 @@ export default class PricelistManagerCommands {
                 params.autoprice = false;
             }
 
+            // Manual buy replaces live buy-side updates unless autopriceBuy is explicitly kept on
+            if (params.autopriceBuy !== true) {
+                params.autopriceBuy = false;
+            }
+
             params.isPartialPriced = false;
         } else if (typeof params.buy !== 'object' && typeof params.sell === 'object') {
             // Keep current buy until PriceDB refresh when autopriceBuy=true
@@ -1390,6 +1395,11 @@ export default class PricelistManagerCommands {
 
             if (params.autoprice === undefined && params.autopriceSell !== true && params.autopriceBuy !== true) {
                 params.autoprice = false;
+            }
+
+            // Manual sell replaces live sell-side updates unless autopriceSell is explicitly kept on
+            if (params.autopriceSell !== true) {
+                params.autopriceSell = false;
             }
 
             params.isPartialPriced = false;
@@ -2421,7 +2431,21 @@ export default class PricelistManagerCommands {
         if (match === null) {
             this.bot.sendMessage(steamID, `❌ Could not find item "${priceKey}" in the pricelist`);
         } else {
-            this.bot.sendMessage(steamID, `/code ${this.generateOutput(match)}`);
+            const isPremium = this.bot.handler.getBotInfo.premium;
+            if (isDiscordRedirect(steamID.redirectAnswerTo) && this.bot.discordBot) {
+                this.bot.discordBot.sendAnswerEmbed(
+                    steamID.redirectAnswerTo,
+                    buildGetEntryEmbed(this.bot, match, priceKey, isPremium)
+                );
+                return;
+            }
+
+            this.bot.sendMessage(
+                steamID,
+                `📋 ${match.name} (${priceKey})` +
+                    generateAddedReply(this.bot, isPremium, match) +
+                    generateCostBasisReply(this.bot, match.sku)
+            );
         }
     }
 
@@ -2922,6 +2946,28 @@ function formatPriceRange(entry: Entry): string {
     return parts.length > 0 ? `\n📏 ${parts.join(' | ')}` : '';
 }
 
+function generateCostBasisReply(bot: Bot, sku: string): string {
+    const keyPrice = bot.pricelist.getKeyPrice.metal;
+    const summary = bot.inventoryCostBasis.getSkuCostSummary(sku, keyPrice);
+    if (!summary) {
+        return `\n🧾 Cost basis: no FIFO buy history yet`;
+    }
+
+    const fmt = (keys: number, metal: number): string => new Currencies({ keys, metal }).toString();
+    const ppuOn = bot.options.pricelist.partialPriceUpdate?.enable === true;
+
+    return (
+        `\n🧾 Cost basis (FIFO): ${summary.count} tracked` +
+        `\n   Oldest: ${fmt(summary.fifoKeys, summary.fifoMetal)}` +
+        ` | Avg: ${fmt(summary.avgKeys, summary.avgMetal)}` +
+        `\n   Paid: ${fmt(summary.minKeys, summary.minMetal)} → ${fmt(summary.maxKeys, summary.maxMetal)}` +
+        `\n   Total: ${fmt(summary.totalKeys, summary.totalMetal)}` +
+        (ppuOn
+            ? `\n   PPU floor: ${fmt(summary.floorSellKeys, summary.floorSellMetal)}`
+            : '')
+    );
+}
+
 function generateAddedReply(bot: Bot, isPremium: boolean, entry: Entry): string {
     const amount = bot.inventoryManager.getInventory.getAmount({
         priceKey: entry.id ?? entry.sku,
@@ -2932,6 +2978,7 @@ function generateAddedReply(bot: Bot, isPremium: boolean, entry: Entry): string 
         `${formatTfPrices(entry)}` +
         `${formatPriceRange(entry)}` +
         `${formatUsdPrices(entry)}` +
+        generateCostBasisReply(bot, entry.sku) +
         `\n🛒 Intent: ${entry.intent === 2 ? 'bank' : entry.intent === 1 ? 'sell' : 'buy'}` +
         `\n📦 Stock: ${amount} | Min: ${entry.min} | Max: ${entry.max}` +
         `\n📋 Enabled: ${entry.enabled ? '✅' : '❌'}` +
