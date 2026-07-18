@@ -27,7 +27,7 @@ declare -A TAGS=(
     [v1.0.3]=5772801c35133dbccaddd52cf40897dc310af547
     [v1.0.4]=e245a83ad9257deaf405a4e8a45b5035874d5ecd
     [v1.0.5]=8214498ab4de999bc1d40e96dfb358924867b65b
-    [v1.0.6]=6e907615a8f2e8b8e8e8e8e8e8e8e8e8e8e8e8e8
+    [v1.0.6]=6e907615c050bad688534ca54be6ab42d737c513
 )
 
 declare -A TITLES=(
