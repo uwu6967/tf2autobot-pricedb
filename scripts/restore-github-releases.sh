@@ -52,9 +52,10 @@ declare -A TITLES=(
     [v1.0.6]="v1.0.6 — The Big One: 5.17.0 blank bot + Discord + partial autoprice + panel"
     [v1.0.7]="v1.0.7 — Cost basis, boot-safe IPC, smarter partial autoprice"
     [v1.0.8]="v1.0.8 — Pure Hive keys/ref sharing"
+    [v1.0.9]="v1.0.9 — Pure Hive moved to separate fork"
 )
 
-for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8; do
+for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9; do
     sha="${TAGS[$tag]}"
     notes="$NOTES_DIR/${tag}.md"
 
@@ -94,4 +95,4 @@ for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8; do
     fi
 done
 
-echo "Done. Latest release should be v1.0.8 under $LOGIN."
+echo "Done. Latest release should be v1.0.9 under $LOGIN."
