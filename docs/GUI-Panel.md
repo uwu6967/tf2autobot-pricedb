@@ -2,7 +2,7 @@
 
 Companion UI: **[uwu6967/tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)**
 
-**Tested with:** bot **v1.0.11** + panel **v3.6.2**
+**Tested with:** bot **v1.0.12** + panel **v3.6.2**
 
 ## Install
 

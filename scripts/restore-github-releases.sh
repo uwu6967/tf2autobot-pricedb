@@ -42,8 +42,13 @@ declare -A TAGS=(
     [v1.0.8]=7b60070400f08703951a5da3389ec3626c994d45
     [v1.0.9]=17091b891a0a50ace6ff0f56c978bdea057cd80a
     [v1.0.10]=534a84927bdc22d249ef9eb1e6f9f7ef3076f25a
+<<<<<<< Updated upstream
     [v1.0.11]=4afa0d12ae14036b1459f900f8d847234a2d66eb
     [v1.0.12]=REPLACE_AFTER_COMMIT
+=======
+    [v1.0.11]=cd809971c989cd41ea411111bbd161f97ad446b2
+    [v1.0.12]=b89e2ba85f8ac0c857564660c1c4596c3054d705
+>>>>>>> Stashed changes
 )
 
 LATEST_TAG="v1.0.12"

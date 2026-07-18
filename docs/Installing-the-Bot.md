@@ -18,7 +18,7 @@ Prefer a **release tag** for blank installs:
 ```bash
 git clone https://github.com/uwu6967/tf2autobot-pricedb.git
 cd tf2autobot-pricedb
-git checkout v1.0.11   # or latest: https://github.com/uwu6967/tf2autobot-pricedb/releases
+git checkout v1.0.12   # or latest: https://github.com/uwu6967/tf2autobot-pricedb/releases
 ```
 
 Want Pure Hive? Clone [tf2autobot-pricedb-hive](https://github.com/uwu6967/tf2autobot-pricedb-hive) instead — see [Pure Hive](Pure-Hive).

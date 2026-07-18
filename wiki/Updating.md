@@ -23,7 +23,7 @@ If the bot was cloned with git and runs under **PM2**:
 ```bash
 cd /path/to/tf2autobot-pricedb
 git fetch --tags
-git checkout v1.0.11   # or: git pull
+git checkout v1.0.12   # or: git pull
 npm install
 npm run build
 pm2 restart <your-bot>

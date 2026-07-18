@@ -29,7 +29,7 @@ Steam Mobile Authenticator must be enabled **15+ days** for unrestricted trading
 ## Setup checklist
 
 - [ ] Install Node.js **22+**
-- [ ] Clone and build the [bot](Installing-the-Bot) (`v1.0.11` or latest)
+- [ ] Clone and build the [bot](Installing-the-Bot) (`v1.0.12` or latest)
 - [ ] Create `.env` ([Configuring the Bot](Configuring-the-Bot)) — never commit it
 - [ ] Create `files/<steam_username>/options.json` ([options.json](Configure-your-options.json-file))
 - [ ] Set `IPC=true` in the bot `.env`
