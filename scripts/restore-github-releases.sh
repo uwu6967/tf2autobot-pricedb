@@ -40,6 +40,7 @@ declare -A TAGS=(
     [v1.0.6]=fa9ab53985b386721751c50dfcacece5cca150c7
     [v1.0.7]=7d490805537dd488ce5d99c89ffc9d1c0d5d81e0
     [v1.0.8]=7b60070400f08703951a5da3389ec3626c994d45
+    [v1.0.9]=1006362f40349e1cca4c9b4c93470f24609c2d46
 )
 
 declare -A TITLES=(
