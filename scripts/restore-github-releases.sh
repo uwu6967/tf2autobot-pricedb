@@ -29,6 +29,7 @@ declare -A TAGS=(
     [v1.0.5]=8214498ab4de999bc1d40e96dfb358924867b65b
     [v1.0.6]=5723c8e3e4c931f0722d286a386fb7c9826eac03
     [v1.0.7]=30285d385fcd69a464b84b2dfa55eb1264feb904
+    [v1.0.8]=172c34d29b50309b6d4354859562d6711c635652
 )
 
 declare -A TITLES=(
@@ -39,10 +40,11 @@ declare -A TITLES=(
     [v1.0.4]="v1.0.4 - !updaterepo dist build safety"
     [v1.0.5]="v1.0.5 - panel IPC string error messages"
     [v1.0.6]="v1.0.6 — The Big One: 5.17.0 blank bot + Discord + partial autoprice + panel"
-    [v1.0.7]=30285d385fcd69a464b84b2dfa55eb1264feb904"v1.0.7 — Cost basis, boot-safe IPC, smarter partial autoprice"
+    [v1.0.7]=30285d385fcd69a464b84b2dfa55eb1264feb904
+    [v1.0.8]=172c34d29b50309b6d4354859562d6711c635652"v1.0.7 — Cost basis, boot-safe IPC, smarter partial autoprice"
 )
 
-for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7; do
+for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8; do
     sha="${TAGS[$tag]}"
     notes="$NOTES_DIR/${tag}.md"
 
@@ -82,4 +84,4 @@ for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7; do
     fi
 done
 
-echo "Done. Latest release should be v1.0.7 under $LOGIN."
+echo "Done. Latest release should be v1.0.8 under $LOGIN."
