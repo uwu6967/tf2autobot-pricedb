@@ -68,17 +68,17 @@ function main() {
         process.exit(1);
     }
 
-    let isLatest;
+    let latestApiTag;
     try {
-        isLatest = runGh(['release', 'view', tag, '-R', repo, '--json', 'isLatest', '--jq', '.isLatest']);
+        latestApiTag = runGh(['api', `repos/${repo}/releases/latest`, '--jq', '.tag_name']);
     } catch (err) {
-        console.error(`FAIL: could not read isLatest for ${tag}`);
+        console.error(`FAIL: could not read latest GitHub release via API`);
         console.error(err.stderr || err.message || err);
         process.exit(1);
     }
 
-    if (isLatest !== 'true') {
-        console.error(`FAIL: release ${tag} is not marked as Latest on GitHub`);
+    if (latestApiTag !== tag) {
+        console.error(`FAIL: GitHub latest release is ${latestApiTag}, expected ${tag}`);
         console.error('Run: ./scripts/restore-github-releases.sh  (logged in as uwu6967)');
         process.exit(1);
     }
@@ -113,11 +113,20 @@ function main() {
         }
 
         const expectedTarget = restoreTargets[forkTag];
-        if (expectedTarget && /^[0-9a-f]{40}$/i.test(target) && target !== expectedTarget) {
-            console.error(
-                `FAIL: release ${forkTag} target ${target} does not match restore script ${expectedTarget}`
-            );
-            process.exit(1);
+        if (expectedTarget) {
+            if (!/^[0-9a-f]{40}$/i.test(target)) {
+                console.error(
+                    `FAIL: release ${forkTag} target is "${target}" (branch/ref), expected commit ${expectedTarget}`
+                );
+                console.error('Run: ./scripts/restore-github-releases.sh  (logged in as uwu6967)');
+                process.exit(1);
+            }
+            if (target !== expectedTarget) {
+                console.error(
+                    `FAIL: release ${forkTag} target ${target} does not match restore script ${expectedTarget}`
+                );
+                process.exit(1);
+            }
         }
 
         if (/^[0-9a-f]{40}$/i.test(target)) {
