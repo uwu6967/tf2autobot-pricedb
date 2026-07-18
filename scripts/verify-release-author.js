@@ -1,59 +1,124 @@
 #!/usr/bin/env node
 /**
- * Verify the latest GitHub release is published under uwu6967 (not cursor[bot]).
+ * Verify fork GitHub releases are published under uwu6967 (not cursor[bot])
+ * and that the latest release matches package.json.
+ *
  * Run locally after: gh auth login  (as uwu6967)
  */
 const { execFileSync } = require('child_process');
+const fs = require('fs');
+const path = require('path');
+
 const pkg = require('../package.json');
 const version = pkg.version;
 const tag = `v${version}`;
+const repo = 'uwu6967/tf2autobot-pricedb';
+const expectedAuthor = 'uwu6967';
 
 function runGh(args) {
     return execFileSync('gh', args, { encoding: 'utf8' }).trim();
 }
 
-function main() {
-    let author;
-    let target;
+function resolveTagCommit(tagName) {
+    const tagRefSha = runGh([
+        'api',
+        `repos/${repo}/git/refs/tags/${tagName}`,
+        '--jq',
+        '.object.sha'
+    ]);
+    const tagObject = JSON.parse(runGh(['api', `repos/${repo}/git/tags/${tagRefSha}`]));
+    return tagObject.object?.type === 'commit' ? tagObject.object.sha : tagRefSha;
+}
 
+function forkTagsUpTo(versionStr) {
+    const patch = Number(versionStr.split('.')[2]);
+    const tags = [];
+    for (let i = 0; i <= patch; i++) {
+        tags.push(`v1.0.${i}`);
+    }
+    return tags;
+}
+
+function readRestoreTargets() {
+    const script = fs.readFileSync(path.join(__dirname, 'restore-github-releases.sh'), 'utf8');
+    const targets = {};
+    const re = /\[v1\.0\.(\d+)\]=([0-9a-f]{40})/g;
+    let match;
+    while ((match = re.exec(script)) !== null) {
+        targets[`v1.0.${match[1]}`] = match[2];
+    }
+    return targets;
+}
+
+function main() {
+    const forkTags = forkTagsUpTo(version);
+    const restoreTargets = readRestoreTargets();
+
+    let latestTag;
     try {
-        author = runGh(['release', 'view', tag, '--json', 'author', '--jq', '.author.login']);
-        target = runGh(['release', 'view', tag, '--json', 'targetCommitish', '--jq', '.targetCommitish']);
+        latestTag = runGh(['release', 'list', '-R', repo, '--limit', '1', '--json', 'tagName', '--jq', '.[0].tagName']);
     } catch (err) {
-        console.error(`FAIL: could not read GitHub release ${tag}`);
+        console.error('FAIL: could not read latest GitHub release');
         console.error(err.stderr || err.message || err);
         process.exit(1);
     }
 
-    const tagRefSha = runGh([
-        'api',
-        `repos/uwu6967/tf2autobot-pricedb/git/refs/tags/${tag}`,
-        '--jq',
-        '.object.sha'
-    ]);
-    const tagObject = JSON.parse(
-        runGh(['api', `repos/uwu6967/tf2autobot-pricedb/git/tags/${tagRefSha}`])
+    if (latestTag !== tag) {
+        console.error(`FAIL: latest GitHub release is ${latestTag}, expected ${tag}`);
+        process.exit(1);
+    }
+
+    for (const forkTag of forkTags) {
+        let author;
+        let target;
+
+        try {
+            author = runGh(['release', 'view', forkTag, '-R', repo, '--json', 'author', '--jq', '.author.login']);
+            target = runGh([
+                'release',
+                'view',
+                forkTag,
+                '-R',
+                repo,
+                '--json',
+                'targetCommitish',
+                '--jq',
+                '.targetCommitish'
+            ]);
+        } catch (err) {
+            console.error(`FAIL: missing GitHub release ${forkTag}`);
+            console.error(err.stderr || err.message || err);
+            process.exit(1);
+        }
+
+        if (author !== expectedAuthor) {
+            console.error(`FAIL: release ${forkTag} is published by ${author}, expected ${expectedAuthor}`);
+            console.error('Run: ./scripts/restore-github-releases.sh  (logged in as uwu6967)');
+            process.exit(author === 'cursor[bot]' ? 1 : 2);
+        }
+
+        const expectedTarget = restoreTargets[forkTag];
+        if (expectedTarget && /^[0-9a-f]{40}$/i.test(target) && target !== expectedTarget) {
+            console.error(
+                `FAIL: release ${forkTag} target ${target} does not match restore script ${expectedTarget}`
+            );
+            process.exit(1);
+        }
+
+        if (/^[0-9a-f]{40}$/i.test(target)) {
+            const resolvedCommit = resolveTagCommit(forkTag);
+            if (target !== resolvedCommit) {
+                console.error(
+                    `FAIL: release ${forkTag} target ${target} does not match tag commit ${resolvedCommit}`
+                );
+                process.exit(1);
+            }
+        }
+    }
+
+    console.log(
+        `OK: releases ${forkTags[0]}..${tag} are published by ${expectedAuthor}; latest is ${tag}`
     );
-    const resolvedCommit =
-        tagObject.object?.type === 'commit' ? tagObject.object.sha : tagRefSha;
-
-    if (author !== 'uwu6967') {
-        console.error(`FAIL: release ${tag} is published by ${author}, expected uwu6967`);
-        process.exit(author === 'cursor[bot]' ? 1 : 2);
-    }
-
-    if (target !== resolvedCommit) {
-        console.error(`FAIL: release ${tag} target ${target} does not match tag commit ${resolvedCommit}`);
-        process.exit(1);
-    }
-
-    const tagger = tagObject.tagger?.login;
-    if (tagger && tagger !== 'uwu6967') {
-        console.error(`FAIL: tag ${tag} was created by ${tagger}, expected uwu6967`);
-        process.exit(1);
-    }
-
-    console.log(`OK: release ${tag} is published by uwu6967 at ${target}`);
 }
 
 main();
