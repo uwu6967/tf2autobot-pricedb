@@ -45,6 +45,7 @@ export const BOT_COMMAND_NAMES = [
     'remove',
     'removebulk',
     'get',
+    'setcost',
     'getall',
     'find',
     'ppu',
@@ -106,6 +107,7 @@ const ADMIN_ONLY = new Set([
     'remove',
     'removebulk',
     'get',
+    'setcost',
     'getall',
     'find',
     'ppu',
@@ -491,6 +493,50 @@ export function getSlashCommandDefinitions(): RESTPostAPIChatInputApplicationCom
         cmd('update', 'Update a pricelist entry (admin)', pricelistListingOptions(false)),
         cmd('remove', 'Remove a pricelist entry (admin)', lookupOnlyOptions('Item to remove')),
         cmd('get', 'Get pricelist entry details (admin)', lookupOnlyOptions('Item to look up')),
+        cmd('setcost', 'Set FIFO cost lots for blank deposits / corrections (admin)', [
+            lookupOption(true),
+            valueOption('Item SKU, name, or asset id'),
+            {
+                name: 'metal',
+                description: 'Paid refined per unit (use with keys, or alone)',
+                type: ApplicationCommandOptionType.Number as const,
+                required: false
+            },
+            {
+                name: 'keys',
+                description: 'Paid keys per unit',
+                type: ApplicationCommandOptionType.Integer as const,
+                required: false
+            },
+            {
+                name: 'amount',
+                description: 'How many units (default: current stock)',
+                type: ApplicationCommandOptionType.Integer as const,
+                required: false
+            },
+            {
+                name: 'mode',
+                description: 'replace = wipe SKU lots then add (default); append = add on top',
+                type: ApplicationCommandOptionType.String as const,
+                required: false,
+                choices: [
+                    { name: 'Replace existing lots', value: 'replace' },
+                    { name: 'Append to existing lots', value: 'append' }
+                ]
+            },
+            {
+                name: 'clear',
+                description: 'Wipe all FIFO lots for this SKU (ignores price/amount)',
+                type: ApplicationCommandOptionType.Boolean as const,
+                required: false
+            },
+            {
+                name: 'reprice',
+                description: 'Update sell from new FIFO + min profit (default true)',
+                type: ApplicationCommandOptionType.Boolean as const,
+                required: false
+            }
+        ]),
         cmd('offerinfo', 'Get trade offer details (admin)', [
             {
                 name: 'offer_id',
@@ -643,6 +689,40 @@ export function resolveSlashRoute(interactionName: string, options: SlashOptionR
             return routeFromPricelistCommand('remove', options, false);
         case 'get':
             return routeFromPricelistCommand('get', options, false);
+        case 'setcost': {
+            const lookup = options.getString('lookup') as ItemLookupType | null;
+            const value = options.getString('value');
+            if (!lookup || !value) {
+                return null;
+            }
+            const parts = [`${lookup}=${value}`];
+            const clear = options.getBoolean('clear');
+            if (clear === true) {
+                parts.push('clear=true');
+            } else {
+                const metal = options.getNumber('metal');
+                const keys = options.getInteger('keys');
+                if (metal != null) {
+                    parts.push(`metal=${metal}`);
+                }
+                if (keys != null) {
+                    parts.push(`keys=${keys}`);
+                }
+                const amount = options.getInteger('amount');
+                if (amount != null) {
+                    parts.push(`amount=${amount}`);
+                }
+                const mode = options.getString('mode');
+                if (mode) {
+                    parts.push(`mode=${mode}`);
+                }
+                const reprice = options.getBoolean('reprice');
+                if (reprice != null) {
+                    parts.push(`reprice=${reprice ? 'true' : 'false'}`);
+                }
+            }
+            return { prefixMessage: `!setcost ${parts.join('&')}`, adminOnly: true };
+        }
         case 'offerinfo': {
             const id = options.getString('offer_id') ?? options.getString('id');
             return id ? { prefixMessage: `!offerinfo ${id}`, adminOnly: true } : null;

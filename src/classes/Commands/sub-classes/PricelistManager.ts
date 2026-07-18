@@ -2456,6 +2456,153 @@ export default class PricelistManagerCommands {
         }
     }
 
+    /**
+     * Manually set FIFO cost lots (blank deposits from main, corrections, etc).
+     * Examples:
+     *   !setcost sku=725;6;uncraftable&metal=25
+     *   !setcost sku=725;6;uncraftable&metal=25&amount=50&mode=replace
+     *   !setcost sku=725;6;uncraftable&metal=25&amount=10&mode=append
+     *   !setcost sku=725;6;uncraftable&clear=true
+     */
+    async setCostCommand(steamID: SteamID, message: string): Promise<void> {
+        const params = CommandParser.parseParams(CommandParser.removeCommand(removeLinkProtocol(message)));
+        let sku = params.sku as string | undefined;
+
+        if (sku !== undefined && !testPriceKey(sku)) {
+            return this.bot.sendMessage(steamID, `❌ "sku" should not be empty or wrong format.`);
+        }
+
+        if (params.item !== undefined) {
+            let match = this.bot.pricelist.searchByName(params.item as string, false);
+
+            if (match === null) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ I could not find any items in my pricelist that contain "${params.item as string}"`
+                );
+            } else if (Array.isArray(match)) {
+                const matchCount = match.length;
+                if (matchCount > 20) {
+                    match = match.splice(0, 20);
+                }
+                let reply = `I've found ${matchCount} items. Try with one of the items shown below:\n${match.join(
+                    ',\n'
+                )}`;
+                if (matchCount > match.length) {
+                    const other = matchCount - match.length;
+                    reply += `,\nand ${other} other ${pluralize('item', other)}.`;
+                }
+                return this.bot.sendMessage(steamID, reply);
+            }
+
+            sku = match.sku;
+        } else if (sku === undefined && params.id !== undefined) {
+            const priceKey = String(params.id);
+            const entry = this.bot.pricelist.getPriceBySkuOrAsset({ priceKey, onlyEnabled: false });
+            if (entry === null) {
+                return this.bot.sendMessage(steamID, `❌ Could not find item "${priceKey}" in the pricelist`);
+            }
+            sku = entry.sku;
+        } else if (sku === undefined) {
+            const item = getItemFromParams(steamID, params, this.bot);
+            if (item !== null) {
+                sku = SKU.fromObject(item);
+            }
+        }
+
+        if (sku === undefined) {
+            return this.bot.sendMessage(
+                steamID,
+                '❌ Missing item. Example: !setcost sku=725;6;uncraftable&metal=25&amount=50'
+            );
+        }
+
+        const clear =
+            params.clear === true ||
+            params.clear === 'true' ||
+            String(params.clear ?? '').toLowerCase() === 'true';
+
+        if (clear) {
+            const removed = await this.bot.inventoryCostBasis.clearSku(sku);
+            const name = this.bot.schema.getName(SKU.fromString(sku), false) || sku;
+            return this.bot.sendMessage(
+                steamID,
+                `✅ Cleared ${removed} FIFO lot${removed === 1 ? '' : 's'} for ${name} (${sku})`
+            );
+        }
+
+        const keysRaw = params.keys ?? params['cost.keys'];
+        const metalRaw = params.metal ?? params['cost.metal'];
+        if (keysRaw === undefined && metalRaw === undefined) {
+            return this.bot.sendMessage(
+                steamID,
+                '❌ Need keys and/or metal (paid cost per unit), or clear=true.\n' +
+                    'Example: !setcost sku=725;6;uncraftable&metal=25&amount=50'
+            );
+        }
+
+        const costKeys = keysRaw === undefined ? 0 : Number(keysRaw);
+        const costMetal = metalRaw === undefined ? 0 : Number(metalRaw);
+        if (!Number.isFinite(costKeys) || !Number.isFinite(costMetal) || costKeys < 0 || costMetal < 0) {
+            return this.bot.sendMessage(steamID, '❌ keys/metal must be non-negative numbers.');
+        }
+
+        const modeRaw = String(params.mode ?? 'replace').toLowerCase();
+        if (modeRaw !== 'replace' && modeRaw !== 'append') {
+            return this.bot.sendMessage(steamID, '❌ mode must be "replace" (default) or "append".');
+        }
+        const mode = modeRaw as 'replace' | 'append';
+
+        let amount: number;
+        if (params.amount !== undefined || params.quantity !== undefined) {
+            amount = Number(params.amount ?? params.quantity);
+            if (!Number.isInteger(amount) || amount < 0) {
+                return this.bot.sendMessage(steamID, '❌ amount/quantity must be a non-negative integer.');
+            }
+        } else {
+            amount = this.bot.inventoryManager.getInventory.getAmount({
+                priceKey: sku,
+                includeNonNormalized: false,
+                tradableOnly: true
+            });
+            if (amount <= 0) {
+                return this.bot.sendMessage(
+                    steamID,
+                    '❌ No stock for this SKU and no amount given. Pass amount=<n>.'
+                );
+            }
+        }
+
+        try {
+            const result = await this.bot.inventoryCostBasis.setSkuLots(sku, amount, costKeys, costMetal, mode);
+            const name = this.bot.schema.getName(SKU.fromString(sku), false) || sku;
+            const paid = new Currencies({ keys: costKeys, metal: costMetal }).toString();
+
+            let repriceNote = '';
+            const wantReprice =
+                params.reprice === undefined ||
+                params.reprice === true ||
+                params.reprice === 'true' ||
+                String(params.reprice).toLowerCase() === 'true';
+
+            if (wantReprice && amount > 0) {
+                const changed = this.bot.pricelist.repriceSellFromNextFifoLot(sku);
+                repriceNote = changed ? '\n🔄 Sell updated from new FIFO lot + min profit.' : '';
+            }
+
+            return this.bot.sendMessage(
+                steamID,
+                `✅ FIFO ${mode} for ${name} (${sku})\n` +
+                    `• Removed: ${result.removed}\n` +
+                    `• Added: ${result.added} @ ${paid} each` +
+                    repriceNote +
+                    `\n\nUse /get (or !get) to see purchase history.`
+            );
+        } catch (err) {
+            return this.bot.sendMessage(steamID, `❌ Failed to set cost: ${(err as Error).message}`);
+        }
+    }
+
     private generateOutput(filtered: Entry): string {
         const currentStock = this.bot.inventoryManager.getInventory.getAmount({
             priceKey: filtered.id ?? filtered.sku,

@@ -90,6 +90,7 @@ export default class HelpCommands {
                         `remove (sku|name|defindex|item|id)=<a> - Remove a pricelist entry 🔥`,
                         `removebulk (sku|item)=<a><Enter (new line)><second and so on>... - Bulk remove pricelist entries 🔥🔥🔥`,
                         `get (sku|name|defindex|item|id)=<a> - Get raw information about a pricelist entry`,
+                        `setcost (sku|item|id)=<a>&[keys=<n>]&[metal=<n>]&[amount=<n>]&[mode=replace|append]&[reprice=true] - Set FIFO cost lots (blank deposits). Use clear=true to wipe lots.`,
                         `getAll [limit=<number>] - Get a list of all items exist in your pricelist. Set limit=-1 to show all`,
                         `find <Listing-parameters>=<value>[&limit=<value>] - Get the list of filtered items detail based on the parameters 🔍`,
                         `ppu [limit=<number>] - Get a list of items that is currently has Partial Price Update enabled`,

@@ -1,131 +1,61 @@
 # Common Errors
 
-Solutions for the most frequent setup and runtime problems.
+## Steam / login
 
-## Installation
+| Error / symptom | What to try |
+|---|---|
+| Rate limit / HTTP 429 | This fork retries escrow / trade URL / localization instead of crash-looping. Wait and let it recover. |
+| Login / 2FA failures | Check `STEAM_SHARED_SECRET` / identity secret; authenticator clock skew |
+| Trade URL missing | Bot caches trade URL; ensure Steam inventory is public enough for trading |
 
-### `npm install` fails
+## backpack.tf / listings
 
-- Confirm Node.js 22+ is installed: `node --version`
-- Delete `node_modules` and `package-lock.json`, then run `npm install` again
-- On Windows, run the terminal as Administrator if you get permission errors
+| Error / symptom | What to try |
+|---|---|
+| Listings not posting | Valid `BPTF_ACCESS_TOKEN` for **this** bot account; trade URL set on bptf |
+| Cap / slot errors | Free listing slots; check archived vs active |
+| 429 from bptf | Back off; don’t spam `!refreshlist` |
 
-### `npm run build` fails
+## Pricelist / FIFO
 
-- Make sure `npm install` completed without errors
-- Check for TypeScript errors in the output
-- Ensure you have enough disk space
+| Error / symptom | What to try |
+|---|---|
+| “Item not found in new pricelist” | SKU missing from pricedb dump; unique items use SKU for price lookup |
+| Empty purchase history | No FIFO lots — use `!setcost` after blank deposits |
+| `!setcost` quantity errors | Amount must be integer 0–5000; pass `amount=` if stock is 0 |
+| Sell didn’t reprice after sale | Full `autoprice` or `autopriceSell` skips FIFO reprice |
 
-## Steam login
+## Panel / IPC
 
-### `InvalidPassword` / login failed
+| Error / symptom | What to try |
+|---|---|
+| no bot found | Bot up? `IPC=true`? Restart panel after switching bots |
+| Empty / weird errors on add | Bot ≥ v1.0.5 for string IPC errors |
+| Bot is still starting | Wait for pricelist ready; retry |
+| Panel can’t connect | Same machine / firewall; TLS settings if used |
 
-- Double-check `STEAM_ACCOUNT_NAME` and `STEAM_PASSWORD` in `.env`
-- Make sure there are no extra spaces or quotes around values
-- If you recently changed your password, update `.env`
+## Updates
 
-### Steam Guard code wrong
+| Error / symptom | What to try |
+|---|---|
+| `!updaterepo` left no dist | Use this fork (≥ v1.0.4) — keeps dist until build OK |
+| Wrong version after pull | `git checkout` the release tag; `npm install && npm run build` |
 
-- Verify `STEAM_SHARED_SECRET` is correct
-- Regenerate secrets from your authenticator app if needed
-- Make sure your system clock is accurate (TOTP codes are time-sensitive)
+## Mannco
 
-### `LoggedInElsewhere` / session conflict
-
-- Close Steam on other machines
-- Wait a few minutes and restart the bot
-- The bot's auto-reconnect will retry
-
-### Trade confirmations failing
-
-- Verify `STEAM_IDENTITY_SECRET` is correct
-- Confirm Mobile Authenticator is active on the account
-
-## backpack.tf
-
-### `Invalid API key` / BPTF errors
-
-- Regenerate your key at [backpack.tf/connections](https://backpack.tf/connections)
-- Update both `BPTF_API_KEY` and `BPTF_ACCESS_TOKEN` in `.env`
-- Restart the bot
-
-### Listings not creating
-
-- Confirm `miscSettings.createListings.enable` is `true` in `options.json`
-- Check the bot is not halted (`!unhalt` or disable `startHalted`)
-- Verify your backpack.tf account is in good standing
-- Check logs for rate limit errors
-
-## GUI Panel
-
-### Panel can't connect to bot
-
-1. Bot must be running
-2. `IPC=true` in the bot `.env`
-3. Restart the bot after changing `.env`
-4. Check bot logs for IPC errors
-
-### Bot not listed in panel
-
-- Wait for the bot to fully start
-- Only one local bot registers by default — check you're not running duplicates
-
-### Port 3000 already in use
-
-Change `PORT` in the panel `.env` to another port.
-
-## Pricer
-
-### Prices not updating
-
-- Confirm `ENABLE_SOCKET=true` in `.env`
-- Check your internet connection
-- pricedb.io socket may be temporarily down — check [pricedb.io](https://pricedb.io)
-
-### Custom pricer not working
-
-- Set both `CUSTOM_PRICER_URL` and `CUSTOM_PRICER_API_TOKEN`
-- Confirm the custom pricer server is reachable
-
-## options.json
-
-### Bot won't start — options error
-
-- Validate JSON syntax (trailing commas are invalid)
-- Compare against [`.example/options.json`](https://github.com/uwu6967/tf2autobot-pricedb/blob/master/.example/options.json)
-- Use the GUI panel editor for safer changes
-
-### Changes not applying
-
-- Restart the bot after editing `options.json` directly
-- Or apply changes through the GUI panel
-
-## Trades
-
-### Bot declining all offers
-
-- Check `trade` section in `options.json` for strict rules
-- Verify items are in the pricelist with correct buy/sell prices
-- Check if the user is on the ban list
-
-### Escrow / trade hold
-
-- The other user needs Steam Guard Mobile Authenticator
-- The bot will decline escrow trades by default
-
-## Logs
-
-Log files are saved when `ENABLE_SAVE_LOG_FILE=true` (default). Check the `logs/` directory for detailed error output.
-
-Enable verbose logging:
-
-```bash
-DEBUG=true
-DEBUG_FILE=true
-```
+| Error / symptom | What to try |
+|---|---|
+| Commands ignored | `MANNCO_STORE_API_KEY` + `miscSettings.manncoStore.enable` |
+| Instant sell on deposit | Expected if a buy order matches — `confirm=true` is required on purpose |
 
 ## Still stuck?
 
-1. Search [existing issues](https://github.com/uwu6967/tf2autobot-pricedb/issues)
-2. Open a new issue with your error message and relevant log lines (redact secrets)
-3. For panel issues, use the [panel issue tracker](https://github.com/uwu6967/tf2autobot-gui-panel/issues)
+1. Check bot logs (`logs/` or PM2)  
+2. Confirm you’re on the [latest release](https://github.com/uwu6967/tf2autobot-pricedb/releases)  
+3. Open an issue with logs (redact secrets)
+
+## Related
+
+- [FAQ](FAQ)  
+- [Updating](Updating)  
+- [Panel IPC](Panel-IPC)

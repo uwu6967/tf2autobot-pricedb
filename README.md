@@ -6,9 +6,9 @@ This repository is a personal fork built on top of the [pricedb.io edition](http
 
 **Public blank-bot releases:** [uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb/releases) (use with [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)).
 
-**Current version:** 1.0.10
+**Current version:** 1.0.11
 
-Latest release: [v1.0.10](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.10)
+Latest release: [v1.0.11](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.11)
 
 Clone a clean install:
 
@@ -46,7 +46,7 @@ The companion web panel lives in a separate repository:
 
 The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
 
-**Tested together:** bot **v1.0.10** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
+**Tested together:** bot **v1.0.11** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
 
 ### Running bot + panel together
 
@@ -83,11 +83,15 @@ See the [panel README](https://github.com/uwu6967/tf2autobot-gui-panel) for full
 Compared to upstream TF2Autobot, this lineage adds:
 
 - **[pricedb.io](https://pricedb.io)** as the default pricing source (replacing the old prices.tf workflow)
-- **PriceDB Store integration** — sell listings on backpack.tf can be mirrored to your pricedb.io/crit.tf store
-- **[Journal.tf](https://journal.tf)** integration for portfolio and profit tracking
-- **Easy Copy Paste (ECP)** — user-friendly buy/sell command aliases in listing notes
-- **Improved Partial Price Update (PPU)** — FIFO queue logic for multi-unit stock protection
-- **Separate key buy/sell rates** for more accurate trade valuation
+- **Partial autoprice** — live buy *or* sell while the other side stays manual
+- **FIFO cost basis** — purchase history on `!get`, lot-accurate profit, sell reprice, manual `!setcost`
+- **Discord** — version alerts, Autokeys / Unhalt, pricelist slash commands
+- **Panel IPC** — readable errors, boot-safe calls, Unlisted Stock inventory
+- **PriceDB Store** / **Mannco.store** / **Journal.tf** integrations
+- **Easy Copy Paste (ECP)** listing notes + improved PPU
+- **Pure Hive** available on a [separate fork](https://github.com/uwu6967/tf2autobot-pricedb-hive)
+
+Full map: [wiki Features](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Features).
 
 
 ## Requirements
@@ -329,7 +333,14 @@ Full guides are available on the **[project wiki](https://github.com/uwu6967/tf2
 - [GUI Panel](https://github.com/uwu6967/tf2autobot-pricedb/wiki/GUI-Panel)
 - [Configuring the Bot](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Configuring-the-Bot)
 - [options.json reference](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Configure-your-options.json-file)
+- [Features Overview](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Features)
+- [Partial Autoprice](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Partial-Autoprice)
+- [Cost Basis & FIFO](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Cost-Basis-and-FIFO)
+- [Discord](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Discord)
 - [PriceDB Store](https://github.com/uwu6967/tf2autobot-pricedb/wiki/PriceDB-Store)
+- [Mannco.store](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Mannco-Store)
+- [Pure Hive](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Pure-Hive)
+- [Updating](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Updating)
 - [Common Errors](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Common-Errors)
 - [FAQ](https://github.com/uwu6967/tf2autobot-pricedb/wiki/FAQ)
 
