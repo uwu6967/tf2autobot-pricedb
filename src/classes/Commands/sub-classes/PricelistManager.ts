@@ -19,7 +19,13 @@ import { formatCategoryList, normalizeBulkAddCategory, resolveCategorySkus, reso
 import { Item } from '../../IPricer';
 import { Currency } from 'src/types/TeamFortress2';
 import { isDiscordRedirect } from '../../../lib/discordRedirect';
-import { buildAddedEntryEmbed, buildUpdatedEntryEmbed, buildGetEntryEmbed } from '../../../lib/pricelistEntryEmbed';
+import {
+    buildAddedEntryEmbed,
+    buildUpdatedEntryEmbed,
+    buildGetEntryEmbed,
+    buildPurchaseHistoryEmbeds,
+    formatPurchaseHistoryText
+} from '../../../lib/pricelistEntryEmbed';
 
 // Pricelist manager
 
@@ -2433,10 +2439,10 @@ export default class PricelistManagerCommands {
         } else {
             const isPremium = this.bot.handler.getBotInfo.premium;
             if (isDiscordRedirect(steamID.redirectAnswerTo) && this.bot.discordBot) {
-                this.bot.discordBot.sendAnswerEmbed(
-                    steamID.redirectAnswerTo,
-                    buildGetEntryEmbed(this.bot, match, priceKey, isPremium)
-                );
+                this.bot.discordBot.sendAnswerEmbeds(steamID.redirectAnswerTo, [
+                    buildGetEntryEmbed(this.bot, match, priceKey, isPremium),
+                    ...buildPurchaseHistoryEmbeds(this.bot, match, priceKey)
+                ]);
                 return;
             }
 
@@ -2444,7 +2450,8 @@ export default class PricelistManagerCommands {
                 steamID,
                 `📋 ${match.name} (${priceKey})` +
                     generateAddedReply(this.bot, isPremium, match) +
-                    generateCostBasisReply(this.bot, match.sku)
+                    generateCostBasisReply(this.bot, match.sku) +
+                    formatPurchaseHistoryText(this.bot, match)
             );
         }
     }

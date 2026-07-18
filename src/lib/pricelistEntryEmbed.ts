@@ -304,3 +304,91 @@ export function buildGetEntryEmbed(bot: Bot, entry: Entry, priceKey: string, isP
         }
     };
 }
+
+function formatPurchaseLotLine(lot: {
+    quantity: number;
+    paidKeys: number;
+    paidMetal: number;
+    keyPriceMetal: number | null;
+    keyPriceEstimated: boolean;
+}): string {
+    const paid = formatKeysMetal(lot.paidKeys, lot.paidMetal);
+    const keyRate =
+        lot.keyPriceMetal !== null
+            ? `${lot.keyPriceEstimated ? '~' : ''}${Number(lot.keyPriceMetal.toFixed(2))}ref`
+            : '?ref';
+    const qtyLabel = lot.quantity === 1 ? '1 item' : `${lot.quantity} items`;
+    return `${qtyLabel} → ${paid} (${keyRate})`;
+}
+
+/**
+ * Second Discord message(s) for /get: stock-only FIFO purchase lots.
+ * Format: `46 items → 3 keys (56ref)` where () is key price in ref at buy time.
+ */
+export function buildPurchaseHistoryEmbeds(bot: Bot, entry: Entry, priceKey: string): APIEmbed[] {
+    const stock = stockAmount(bot, entry);
+    const lots = bot.inventoryCostBasis.getSkuPurchaseLots(entry.sku, stock);
+
+    if (lots.length === 0) {
+        return [
+            {
+                title: '🧾 Purchase history (stock)',
+                description:
+                    `**${entry.name}**\n\`${priceKey}\`\n\n` +
+                    `No FIFO buy lots for current stock (${stock}).`,
+                color: embedColor(bot, true),
+                footer: {
+                    text: `${priceKey} • stock ${stock} • v${process.env.BOT_VERSION ?? ''}`
+                }
+            }
+        ];
+    }
+
+    const lines = lots.map(formatPurchaseLotLine);
+    const tracked = lots.reduce((sum, l) => sum + l.quantity, 0);
+    const chunks: string[] = [];
+    let buf = '';
+    for (const line of lines) {
+        const next = buf ? `${buf}\n${line}` : line;
+        // Discord embed description limit 4096; keep headroom
+        if (next.length > 3800) {
+            chunks.push(buf);
+            buf = line;
+        } else {
+            buf = next;
+        }
+    }
+    if (buf) {
+        chunks.push(buf);
+    }
+
+    return chunks.map((description, index) => ({
+        title:
+            chunks.length > 1
+                ? `🧾 Purchase history (stock) (${index + 1}/${chunks.length})`
+                : '🧾 Purchase history (stock)',
+        description:
+            `**${entry.name}**\n\`${priceKey}\`\n` +
+            `Showing **${tracked}** of **${stock}** in stock (sold lots drop off FIFO).\n\n` +
+            description,
+        color: embedColor(bot, true),
+        footer: {
+            text: `${priceKey} • stock ${stock} • v${process.env.BOT_VERSION ?? ''}`
+        }
+    }));
+}
+
+/** Plain-text purchase history for Steam / non-embed replies. */
+export function formatPurchaseHistoryText(bot: Bot, entry: Entry): string {
+    const stock = stockAmount(bot, entry);
+    const lots = bot.inventoryCostBasis.getSkuPurchaseLots(entry.sku, stock);
+    if (lots.length === 0) {
+        return `\n🧾 Purchase history (stock): none for ${stock} in stock`;
+    }
+    const lines = lots.map(l => `• ${formatPurchaseLotLine(l)}`);
+    const tracked = lots.reduce((sum, l) => sum + l.quantity, 0);
+    return (
+        `\n🧾 Purchase history (stock): ${tracked}/${stock}` +
+        `\n${lines.join('\n')}`
+    );
+}

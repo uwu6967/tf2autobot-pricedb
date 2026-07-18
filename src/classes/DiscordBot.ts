@@ -844,38 +844,66 @@ export default class DiscordBot {
     }
 
     public sendAnswerEmbed(origMessage: DiscordRedirectTarget, embed: APIEmbed): void {
-        const payload = { embeds: [embed] };
+        this.sendAnswerEmbeds(origMessage, [embed]);
+    }
+
+    /**
+     * Send one or more embeds. First goes as the main reply; extras follow up
+     * (or as additional channel messages for classic Discord chat).
+     */
+    public sendAnswerEmbeds(origMessage: DiscordRedirectTarget, embeds: APIEmbed[]): void {
+        if (embeds.length === 0) {
+            return;
+        }
+
+        const [first, ...rest] = embeds;
+        const firstPayload = { embeds: [first] };
+
+        const sendRest = (): void => {
+            for (const embed of rest) {
+                const payload = { embeds: [embed] };
+                if (origMessage instanceof Message) {
+                    void (origMessage.channel as TextChannel)
+                        .send(payload)
+                        .catch((err: unknown) => log.error('Failed to send follow-up embed to Discord:', err));
+                } else {
+                    void origMessage
+                        .followUp(payload)
+                        .catch((err: unknown) => log.error('Failed to send Discord embed follow-up:', err));
+                }
+            }
+        };
 
         if (origMessage instanceof Message) {
             void (origMessage.channel as TextChannel)
-                .send(payload)
-                .then(() =>
+                .send(firstPayload)
+                .then(() => {
                     log.info(
-                        `Embed sent to ${origMessage.author.tag} (${origMessage.author.id}): ${embed.title ?? ''}`
-                    )
-                )
+                        `Embed sent to ${origMessage.author.tag} (${origMessage.author.id}): ${first.title ?? ''}`
+                    );
+                    sendRest();
+                })
                 .catch((err: unknown) => log.error('Failed to send embed to Discord:', err));
             return;
         }
 
         const interaction = origMessage;
+        const afterFirst = (): void => {
+            log.info(`Slash embed reply to ${interaction.user.tag}: ${first.title ?? ''}`);
+            sendRest();
+        };
+
         if (!interaction.deferred && !interaction.replied) {
-            void interaction.reply(payload).then(() => {
-                log.info(`Slash embed reply to ${interaction.user.tag}: ${embed.title ?? ''}`);
-            });
+            void interaction.reply(firstPayload).then(afterFirst);
             return;
         }
 
         if (interaction.deferred && !interaction.replied) {
-            void interaction.editReply(payload).then(() => {
-                log.info(`Slash embed reply to ${interaction.user.tag}: ${embed.title ?? ''}`);
-            });
+            void interaction.editReply(firstPayload).then(afterFirst);
             return;
         }
 
-        void interaction.followUp(payload).then(() => {
-            log.info(`Slash embed follow-up to ${interaction.user.tag}: ${embed.title ?? ''}`);
-        });
+        void interaction.followUp(firstPayload).then(afterFirst);
     }
 
     private sendAnswerPart(origMessage: DiscordRedirectTarget, message: string): void {

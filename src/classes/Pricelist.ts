@@ -2315,6 +2315,59 @@ export default class Pricelist extends EventEmitter {
         }
     }
 
+    /**
+     * After a FIFO sell removes the oldest lot(s), set sell from the next oldest lot's
+     * actual paid cost + min profit scrap. Skips full autoprice entries (PriceDB owns those).
+     */
+    repriceSellFromNextFifoLot(sku: string): boolean {
+        if (sku === '5021;6' || ['5000;6', '5001;6', '5002;6'].includes(sku)) {
+            return false;
+        }
+
+        const entry = this.getPrice({ priceKey: sku, onlyEnabled: false });
+        if (entry === null || entry.autoprice) {
+            return false;
+        }
+
+        // Sell-only live / buy-only live: don't overwrite the live side from FIFO
+        if (entry.autopriceSell) {
+            return false;
+        }
+
+        const keyPrice = this.getKeyPrice.metal;
+        const minProfit = this.options.pricelist.partialPriceUpdate?.minProfitScrap ?? 1;
+        const floorScrap = this.bot.inventoryCostBasis.getNextSellFloorScrap(sku, keyPrice, minProfit);
+
+        if (floorScrap === null) {
+            if (entry.isPartialPriced) {
+                entry.isPartialPriced = false;
+                entry.partialPriceTime = null;
+                this.priceChanged(entry.id ?? entry.sku, entry);
+                return true;
+            }
+            return false;
+        }
+
+        const newSell = Currencies.toCurrencies(floorScrap, keyPrice);
+        const oldValue = entry.sell.toValue(keyPrice);
+        const newValue = newSell.toValue(keyPrice);
+        if (oldValue === newValue) {
+            return false;
+        }
+
+        const oldSell = entry.sell.toString();
+        entry.sell = newSell;
+        entry.isPartialPriced = true;
+        entry.partialPriceTime = Math.floor(Date.now() / 1000);
+        this.priceChanged(entry.id ?? entry.sku, entry);
+
+        log.info(
+            `FIFO reprice after sell ${sku}: sell ${oldSell} → ${entry.sell.toString()} ` +
+                `(next lot cost + ${minProfit} scrap)`
+        );
+        return true;
+    }
+
     private get getOld(): PricesObject {
         if (this.maxAge <= 0) {
             return this.prices;

@@ -507,7 +507,8 @@ async function calculateProfitData(offer: i.TradeOffer, bot: Bot): Promise<void>
                         pricelistBuyMetal,
                         diffPerItemKeys,
                         diffPerItemMetal,
-                        offer.id
+                        offer.id,
+                        keyPrice
                     );
                 }
             }
@@ -577,14 +578,28 @@ async function calculateProfitData(offer: i.TradeOffer, bot: Bot): Promise<void>
                     hasEstimates = true;
                 }
 
-                // Calculate raw profit from FIFO cost basis
-                // Raw profit = pricelist sell - pricelist buy + diff (realizes buy-side overpay/underpay)
-                for (const entry of result.entries) {
-                    const itemRawProfitKeys = pricelistSellKeys - entry.costKeys + entry.diffKeys;
-                    const itemRawProfitMetal = pricelistSellMetal - entry.costMetal + entry.diffMetal;
+                // Profit vs the exact lot(s) taken out (oldest FIFO), using that lot's key rate when known
+                const keyPriceNow = bot.pricelist.getKeyPrice.metal;
+                for (const fifoEntry of result.entries) {
+                    const keyRate =
+                        typeof fifoEntry.keyPriceMetal === 'number' && fifoEntry.keyPriceMetal > 0
+                            ? fifoEntry.keyPriceMetal
+                            : keyPriceNow;
+                    const paidScrap = bot.inventoryCostBasis.entryPaidScrap(fifoEntry, keyRate);
+                    const sellScrap =
+                        pricelistSellKeys * Currencies.toScrap(keyPriceNow) +
+                        Currencies.toScrap(pricelistSellMetal);
+                    const profitScrap = sellScrap - paidScrap;
+                    const profitCurr = Currencies.toCurrencies(profitScrap, keyPriceNow);
+                    rawProfitKeys += profitCurr.keys;
+                    rawProfitMetal += profitCurr.metal;
+                }
 
-                    rawProfitKeys += itemRawProfitKeys;
-                    rawProfitMetal += itemRawProfitMetal;
+                // Recalculate listing sell from the NEXT oldest remaining lot
+                try {
+                    bot.pricelist.repriceSellFromNextFifoLot(sku);
+                } catch (err) {
+                    log.warn(`FIFO reprice after sell failed for ${sku}:`, err);
                 }
             }
         }
