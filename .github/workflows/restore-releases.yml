@@ -1,0 +1,27 @@
+name: Restore releases
+
+on:
+    workflow_dispatch:
+
+jobs:
+    restore:
+        runs-on: ubuntu-latest
+        steps:
+            - uses: actions/checkout@v6.0.1
+              with:
+                  fetch-depth: 0
+
+            - name: Restore GitHub releases as uwu6967
+              env:
+                  UWU6967_GH_TOKEN: ${{ secrets.UWU6967_GH_TOKEN }}
+              run: |
+                  if [[ -z "$UWU6967_GH_TOKEN" ]]; then
+                      echo "Add repository secret UWU6967_GH_TOKEN (uwu6967 PAT with repo scope)."
+                      exit 1
+                  fi
+                  ./scripts/restore-github-releases.sh
+
+            - name: Verify release authors
+              env:
+                  GH_TOKEN: ${{ secrets.UWU6967_GH_TOKEN }}
+              run: npm run verify-release-author
