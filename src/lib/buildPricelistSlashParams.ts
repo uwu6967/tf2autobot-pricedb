@@ -75,12 +75,21 @@ export function buildPricelistParamString(fields: PricelistSlashFields): string 
     if (fields.autopriceSell === true) {
         parts.push('autoprice=false');
         parts.push('autopriceSell=true');
+        parts.push('autopriceBuy=false');
     } else if (fields.autopriceBuy === true) {
         parts.push('autoprice=false');
         parts.push('autopriceBuy=true');
+        parts.push('autopriceSell=false');
     } else {
         if (hasSellPrice || hasBuyPrice) {
             parts.push(`autoprice=${fields.autoprice === true ? 'true' : 'false'}`);
+            // Manual price on a side must stop that side's live partial-autoprice mode
+            if (hasBuyPrice && fields.autoprice !== true) {
+                parts.push('autopriceBuy=false');
+            }
+            if (hasSellPrice && fields.autoprice !== true) {
+                parts.push('autopriceSell=false');
+            }
         } else if (fields.autoprice === true) {
             parts.push('autoprice=true');
         } else if (fields.autoprice === false) {

@@ -6,9 +6,9 @@ This repository is a personal fork built on top of the [pricedb.io edition](http
 
 **Public blank-bot releases:** [uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb/releases) (use with [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)).
 
-**Current version:** 1.0.6
+**Current version:** 1.0.7
 
-Latest release: [v1.0.6](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.6)
+Latest release: [v1.0.7](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.7)
 
 Clone a clean install:
 
@@ -46,7 +46,7 @@ The companion web panel lives in a separate repository:
 
 The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
 
-**Tested together:** bot **v1.0.6** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
+**Tested together:** bot **v1.0.7** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
 
 ### Running bot + panel together
 

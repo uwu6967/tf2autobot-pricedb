@@ -72,7 +72,15 @@ function canonicalizeParamKey(rawKey: string): string {
         return CANONICAL_PARAM_KEYS[lower];
     }
 
-    const root = lower.split('.')[0];
+    const parts = lower.split('.');
+    const root = parts[0];
+
+    // Nested keys like minSell.keys / maxBuy.metal must keep camelCase roots
+    if (CANONICAL_PARAM_KEYS[root]) {
+        parts[0] = CANONICAL_PARAM_KEYS[root];
+        return parts.join('.');
+    }
+
     if (CASE_INSENSITIVE_ROOTS.has(root)) {
         return lower;
     }

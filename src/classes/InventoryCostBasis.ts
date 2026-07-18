@@ -1,6 +1,7 @@
 import Bot from './Bot';
 import { promises as fs } from 'fs';
 import path from 'path';
+import Currencies from '@tf2autobot/tf2-currencies';
 import log from '../lib/logger';
 
 const CURRENT_DIFF_VERSION = 2;
@@ -221,6 +222,72 @@ export default class InventoryCostBasis {
      */
     getItemCount(sku: string): number {
         return this.fifoEntries.filter(entry => entry.sku === sku).length;
+    }
+
+    /**
+     * Summarize FIFO cost basis for one SKU (actual paid ≈ pricelist buy + diff).
+     */
+    getSkuCostSummary(
+        sku: string,
+        keyPriceMetal: number
+    ): {
+        count: number;
+        fifoKeys: number;
+        fifoMetal: number;
+        avgKeys: number;
+        avgMetal: number;
+        minKeys: number;
+        minMetal: number;
+        maxKeys: number;
+        maxMetal: number;
+        totalKeys: number;
+        totalMetal: number;
+        floorSellKeys: number;
+        floorSellMetal: number;
+    } | null {
+        const entries = this.fifoEntries.filter(entry => entry.sku === sku);
+        if (entries.length === 0) {
+            return null;
+        }
+
+        const toScrap = (keys: number, metal: number): number =>
+            Math.round(keys * Currencies.toScrap(keyPriceMetal) + Currencies.toScrap(metal));
+
+        const actualScrap = entries.map(e => toScrap(e.costKeys + e.diffKeys, e.costMetal + e.diffMetal));
+        const totalScrap = actualScrap.reduce((sum, v) => sum + v, 0);
+        const avgScrap = totalScrap / entries.length;
+        const minScrap = Math.min(...actualScrap);
+        const maxScrap = Math.max(...actualScrap);
+        const fifoScrap = actualScrap[0];
+
+        const fromScrap = (scrap: number): { keys: number; metal: number } => {
+            const c = Currencies.toCurrencies(Math.max(0, scrap), keyPriceMetal);
+            return { keys: c.keys, metal: c.metal };
+        };
+
+        const fifo = fromScrap(fifoScrap);
+        const avg = fromScrap(avgScrap);
+        const min = fromScrap(minScrap);
+        const max = fromScrap(maxScrap);
+        const total = fromScrap(totalScrap);
+        const minProfitScrap = this.bot.options.pricelist.partialPriceUpdate?.minProfitScrap ?? 1;
+        const floor = fromScrap(fifoScrap + minProfitScrap);
+
+        return {
+            count: entries.length,
+            fifoKeys: fifo.keys,
+            fifoMetal: fifo.metal,
+            avgKeys: avg.keys,
+            avgMetal: avg.metal,
+            minKeys: min.keys,
+            minMetal: min.metal,
+            maxKeys: max.keys,
+            maxMetal: max.metal,
+            totalKeys: total.keys,
+            totalMetal: total.metal,
+            floorSellKeys: floor.keys,
+            floorSellMetal: floor.metal
+        };
     }
 
     /**

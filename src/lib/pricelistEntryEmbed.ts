@@ -1,4 +1,5 @@
 import { APIEmbed, APIEmbedField } from 'discord.js';
+import Currencies from '@tf2autobot/tf2-currencies';
 import Bot from '../classes/Bot';
 import { Entry } from '../classes/Pricelist';
 
@@ -30,6 +31,80 @@ function stockAmount(bot: Bot, entry: Entry): number {
     });
 }
 
+function formatKeysMetal(keys: number, metal: number): string {
+    return new Currencies({ keys, metal }).toString();
+}
+
+function formatRange(
+    min: { toString(): string } | null | undefined,
+    max: { toString(): string } | null | undefined
+): string {
+    if (!min && !max) {
+        return '';
+    }
+    return `${min ? min.toString() : '—'} → ${max ? max.toString() : '—'}`;
+}
+
+function priceRangeLines(entry: Entry): string {
+    const lines: string[] = [];
+    if (entry.minBuy || entry.maxBuy) {
+        lines.push(`📏 **Buy range:** ${formatRange(entry.minBuy, entry.maxBuy)}`);
+    }
+    if (entry.minSell || entry.maxSell) {
+        lines.push(`📏 **Sell range:** ${formatRange(entry.minSell, entry.maxSell)}`);
+    }
+    return lines.join('\n');
+}
+
+function priceRangeLinesUpdate(oldEntry: Entry, newEntry: Entry): string {
+    const lines: string[] = [];
+
+    const oldBuyRange = formatRange(oldEntry.minBuy, oldEntry.maxBuy);
+    const newBuyRange = formatRange(newEntry.minBuy, newEntry.maxBuy);
+    if (oldBuyRange || newBuyRange) {
+        lines.push(`📏 **Buy range:** ${changeOrSame(oldBuyRange || '—', newBuyRange || '—')}`);
+    }
+
+    const oldSellRange = formatRange(oldEntry.minSell, oldEntry.maxSell);
+    const newSellRange = formatRange(newEntry.minSell, newEntry.maxSell);
+    if (oldSellRange || newSellRange) {
+        lines.push(`📏 **Sell range:** ${changeOrSame(oldSellRange || '—', newSellRange || '—')}`);
+    }
+
+    return lines.join('\n');
+}
+
+function costBasisLines(bot: Bot, sku: string): string {
+    const keyPrice = bot.pricelist.getKeyPrice.metal;
+    const summary = bot.inventoryCostBasis.getSkuCostSummary(sku, keyPrice);
+    if (!summary) {
+        return '🧾 No FIFO buy history for this SKU yet.';
+    }
+
+    const ppuOn = bot.options.pricelist.partialPriceUpdate?.enable === true;
+    const lines = [
+        `🧾 **Tracked buys:** ${summary.count}`,
+        `Oldest (FIFO): **${formatKeysMetal(summary.fifoKeys, summary.fifoMetal)}**`,
+        `Average: **${formatKeysMetal(summary.avgKeys, summary.avgMetal)}**`,
+        `Paid range: ${formatKeysMetal(summary.minKeys, summary.minMetal)} → ${formatKeysMetal(
+            summary.maxKeys,
+            summary.maxMetal
+        )}`,
+        `Total cost basis: **${formatKeysMetal(summary.totalKeys, summary.totalMetal)}**`
+    ];
+
+    if (ppuOn) {
+        lines.push(
+            `PPU floor (oldest + min profit): **${formatKeysMetal(
+                summary.floorSellKeys,
+                summary.floorSellMetal
+            )}**`
+        );
+    }
+
+    return lines.join('\n');
+}
+
 function settingsLines(entry: Entry, isPremium: boolean): string {
     const lines = [
         `📋 **Enabled:** ${boolEmoji(entry.enabled)}`,
@@ -38,20 +113,6 @@ function settingsLines(entry: Entry, isPremium: boolean): string {
         `🔄 **Autoprice buy:** ${boolEmoji(entry.autopriceBuy)}`,
         `½🔄 **isPartialPriced:** ${boolEmoji(entry.isPartialPriced)}`
     ];
-    if (entry.minBuy || entry.maxBuy) {
-        lines.push(
-            `📏 **Buy range:** ${entry.minBuy ? entry.minBuy.toString() : '—'} → ${
-                entry.maxBuy ? entry.maxBuy.toString() : '—'
-            }`
-        );
-    }
-    if (entry.minSell || entry.maxSell) {
-        lines.push(
-            `📏 **Sell range:** ${entry.minSell ? entry.minSell.toString() : '—'} → ${
-                entry.maxSell ? entry.maxSell.toString() : '—'
-            }`
-        );
-    }
     if (isPremium) {
         lines.push(`📢 **Promoted:** ${boolEmoji(entry.promoted === 1)}`);
     }
@@ -101,26 +162,65 @@ function bptfClassifiedsUrl(name: string): string {
     return `https://backpack.tf/classifieds?item=${encodeURIComponent(name)}`;
 }
 
-export function buildAddedEntryEmbed(bot: Bot, entry: Entry, priceKey: string, isPremium: boolean): APIEmbed {
-    const amount = stockAmount(bot, entry);
+function buildCommonFields(
+    bot: Bot,
+    entry: Entry,
+    priceKey: string,
+    isPremium: boolean,
+    options: {
+        pricingValue: string;
+        stockValue: string;
+        intentValue: string;
+        settingsValue: string;
+        rangeValue?: string;
+    }
+): APIEmbedField[] {
     const fields: APIEmbedField[] = [
         {
             name: '__Pricing__',
-            value: `💲 **Buy:** ${entry.buy.toString()}\n💲 **Sell:** ${entry.sell.toString()}`
-        },
+            value: options.pricingValue
+        }
+    ];
+
+    if (options.rangeValue) {
+        fields.push({
+            name: '__Price range__',
+            value: options.rangeValue
+        });
+    }
+
+    fields.push({
+        name: '__Cost basis (FIFO)__',
+        value: costBasisLines(bot, entry.sku)
+    });
+
+    fields.push(
         {
             name: '__Stock__',
-            value: `📦 **Stock:** ${amount} | **Min:** ${entry.min} | **Max:** ${entry.max}`
+            value: options.stockValue
         },
         {
             name: '__Intent__',
-            value: `🛒 ${intentLabel(entry.intent)}`
+            value: options.intentValue
         },
         {
             name: '__Settings__',
-            value: settingsLines(entry, isPremium)
+            value: options.settingsValue
         }
-    ];
+    );
+
+    return fields;
+}
+
+export function buildAddedEntryEmbed(bot: Bot, entry: Entry, priceKey: string, isPremium: boolean): APIEmbed {
+    const amount = stockAmount(bot, entry);
+    const fields = buildCommonFields(bot, entry, priceKey, isPremium, {
+        pricingValue: `💲 **Buy:** ${entry.buy.toString()}\n💲 **Sell:** ${entry.sell.toString()}`,
+        stockValue: `📦 **Stock:** ${amount} | **Min:** ${entry.min} | **Max:** ${entry.max}`,
+        intentValue: `🛒 ${intentLabel(entry.intent)}`,
+        settingsValue: settingsLines(entry, isPremium),
+        rangeValue: priceRangeLines(entry) || undefined
+    });
 
     return {
         title: '✅ Item added to pricelist',
@@ -161,30 +261,42 @@ export function buildUpdatedEntryEmbed(
             ? `${intentLabel(oldEntry.intent)} → ${intentLabel(newEntry.intent)}`
             : intentLabel(newEntry.intent);
 
-    const fields: APIEmbedField[] = [
-        {
-            name: '__Pricing__',
-            value: `💲 **Buy:** ${buy}\n💲 **Sell:** ${sell}`
-        },
-        {
-            name: '__Stock__',
-            value: `📦 **Stock:** ${amount} | **Min:** ${min} | **Max:** ${max}`
-        },
-        {
-            name: '__Intent__',
-            value: `🛒 ${intent}`
-        },
-        {
-            name: '__Settings__',
-            value: settingsLinesUpdate(oldEntry, newEntry, isPremium)
-        }
-    ];
+    const fields = buildCommonFields(bot, newEntry, priceKey, isPremium, {
+        pricingValue: `💲 **Buy:** ${buy}\n💲 **Sell:** ${sell}`,
+        stockValue: `📦 **Stock:** ${amount} | **Min:** ${min} | **Max:** ${max}`,
+        intentValue: `🛒 ${intent}`,
+        settingsValue: settingsLinesUpdate(oldEntry, newEntry, isPremium),
+        rangeValue: priceRangeLinesUpdate(oldEntry, newEntry) || undefined
+    });
 
     return {
         title: '✅ Item updated',
         description:
             `**${newEntry.name}**\n\`${priceKey}\`\n` +
             `[Check on backpack.tf](${bptfClassifiedsUrl(newEntry.name)})`,
+        color: embedColor(bot, true),
+        fields,
+        footer: {
+            text: `${priceKey} • v${process.env.BOT_VERSION ?? ''}`
+        }
+    };
+}
+
+export function buildGetEntryEmbed(bot: Bot, entry: Entry, priceKey: string, isPremium: boolean): APIEmbed {
+    const amount = stockAmount(bot, entry);
+    const fields = buildCommonFields(bot, entry, priceKey, isPremium, {
+        pricingValue: `💲 **Buy:** ${entry.buy.toString()}\n💲 **Sell:** ${entry.sell.toString()}`,
+        stockValue: `📦 **Stock:** ${amount} | **Min:** ${entry.min} | **Max:** ${entry.max}`,
+        intentValue: `🛒 ${intentLabel(entry.intent)}`,
+        settingsValue: settingsLines(entry, isPremium),
+        rangeValue: priceRangeLines(entry) || undefined
+    });
+
+    return {
+        title: '📋 Pricelist entry',
+        description:
+            `**${entry.name}**\n\`${priceKey}\`\n` +
+            `[Check on backpack.tf](${bptfClassifiedsUrl(entry.name)})`,
         color: embedColor(bot, true),
         fields,
         footer: {

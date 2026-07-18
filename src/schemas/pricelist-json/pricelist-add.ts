@@ -63,16 +63,16 @@ export const addSchema: jsonschema.Schema = {
             minimum: 1
         },
         minBuy: {
-            $ref: 'tf2-currencies'
+            anyOf: [{ $ref: 'tf2-currencies' }, { type: 'null' }]
         },
         maxBuy: {
-            $ref: 'tf2-currencies'
+            anyOf: [{ $ref: 'tf2-currencies' }, { type: 'null' }]
         },
         minSell: {
-            $ref: 'tf2-currencies'
+            anyOf: [{ $ref: 'tf2-currencies' }, { type: 'null' }]
         },
         maxSell: {
-            $ref: 'tf2-currencies'
+            anyOf: [{ $ref: 'tf2-currencies' }, { type: 'null' }]
         },
         promoted: {
             // 0 = not promote, 1 = promote item (Sell only)

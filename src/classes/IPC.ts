@@ -118,6 +118,11 @@ export default class ipcHandler extends IPC {
 
     /* HANDLERS */
     private addItem(item: Item): void {
+        if (!this.bot.pricelist) {
+            this.ourServer.emit('itemAdded', 'Bot is still starting — try again in a moment');
+            return;
+        }
+
         ipcHandler.cleanItem(item);
 
         let priceKey: string = undefined;
@@ -136,6 +141,11 @@ export default class ipcHandler extends IPC {
     }
 
     private updateItem(item: Item): void {
+        if (!this.bot.pricelist) {
+            this.ourServer.emit('itemUpdated', 'Bot is still starting — try again in a moment');
+            return;
+        }
+
         ipcHandler.cleanItem(item);
 
         let priceKey: string = undefined;
@@ -154,6 +164,11 @@ export default class ipcHandler extends IPC {
     }
 
     private removeItem(priceKey: string): void {
+        if (!this.bot.pricelist) {
+            this.ourServer.emit('itemRemoved', 'Bot is still starting — try again in a moment');
+            return;
+        }
+
         this.bot.pricelist
             .removePrice(priceKey, true)
             .then(item => {
@@ -181,6 +196,12 @@ export default class ipcHandler extends IPC {
     }
 
     sendPricelist(): void {
+        if (!this.bot.pricelist) {
+            // Panel often requests pricelist while the bot is still booting
+            this.ourServer.emit('pricelist', false);
+            return;
+        }
+
         const pricelist = this.bot.pricelist.getPrices;
         if (pricelist) {
             const pricelistMapped = Object.keys(pricelist).map(key => {
