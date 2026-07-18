@@ -40,9 +40,12 @@ declare -A TAGS=(
     [v1.0.6]=fa9ab53985b386721751c50dfcacece5cca150c7
     [v1.0.7]=7d490805537dd488ce5d99c89ffc9d1c0d5d81e0
     [v1.0.8]=7b60070400f08703951a5da3389ec3626c994d45
-    [v1.0.9]=1006362f40349e1cca4c9b4c93470f24609c2d46
-    [v1.0.10]=c4aba934530a8d7e972cd9f9f997ebe1ebd77c6e
+    [v1.0.9]=17091b891a0a50ace6ff0f56c978bdea057cd80a
+    [v1.0.10]=534a84927bdc22d249ef9eb1e6f9f7ef3076f25a
 )
+
+LATEST_TAG="v1.0.10"
+RELEASE_TAGS=(v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9 v1.0.10)
 
 declare -A TITLES=(
     [v1.0.0]="v1.0.0 - uwu6967 blank-bot fork"
@@ -58,9 +61,13 @@ declare -A TITLES=(
     [v1.0.10]="v1.0.10 — FIFO purchase history and sell reprice"
 )
 
-for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9 v1.0.10; do
+for tag in "${RELEASE_TAGS[@]}"; do
     sha="${TAGS[$tag]}"
     notes="$NOTES_DIR/${tag}.md"
+    latest_flag="--latest=false"
+    if [[ "$tag" == "$LATEST_TAG" ]]; then
+        latest_flag="--latest"
+    fi
 
     if gh release view "$tag" >/dev/null 2>&1; then
         author="$(gh release view "$tag" --json author --jq .author.login 2>/dev/null || echo unknown)"
@@ -78,8 +85,9 @@ for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9
         fi
     fi
 
-    if ! git rev-parse "$tag" >/dev/null 2>&1; then
-        echo "Creating tag $tag -> $sha"
+    existing_tag_sha="$(git rev-parse "$tag" 2>/dev/null || echo "")"
+    if [[ "$existing_tag_sha" != "$sha" ]]; then
+        echo "Updating tag $tag -> $sha (was ${existing_tag_sha:-missing})"
         git tag -a "$tag" "$sha" -m "${TITLES[$tag]}" --force
         git push origin "$tag" --force
     fi
@@ -89,13 +97,16 @@ for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9
         gh release create "$tag" \
             --target "$sha" \
             --title "${TITLES[$tag]}" \
-            --notes-file "$notes"
+            --notes-file "$notes" \
+            $latest_flag
     else
         gh release create "$tag" \
             --target "$sha" \
             --title "${TITLES[$tag]}" \
-            --notes "${TITLES[$tag]}"
+            --notes "${TITLES[$tag]}" \
+            $latest_flag
     fi
 done
 
-echo "Done. Latest release should be v1.0.10 under $LOGIN."
+gh release edit "$LATEST_TAG" --latest
+echo "Done. Latest release is $LATEST_TAG under $LOGIN."

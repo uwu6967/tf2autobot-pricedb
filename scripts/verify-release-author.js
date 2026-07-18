@@ -68,6 +68,21 @@ function main() {
         process.exit(1);
     }
 
+    let isLatest;
+    try {
+        isLatest = runGh(['release', 'view', tag, '-R', repo, '--json', 'isLatest', '--jq', '.isLatest']);
+    } catch (err) {
+        console.error(`FAIL: could not read isLatest for ${tag}`);
+        console.error(err.stderr || err.message || err);
+        process.exit(1);
+    }
+
+    if (isLatest !== 'true') {
+        console.error(`FAIL: release ${tag} is not marked as Latest on GitHub`);
+        console.error('Run: ./scripts/restore-github-releases.sh  (logged in as uwu6967)');
+        process.exit(1);
+    }
+
     for (const forkTag of forkTags) {
         let author;
         let target;
