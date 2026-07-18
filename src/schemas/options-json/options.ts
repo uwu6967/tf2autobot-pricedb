@@ -458,6 +458,31 @@ export const optionsSchema: jsonschema.Schema = {
                 startHalted: {
                     $ref: '#/definitions/only-enable'
                 },
+                cartInventoryRetry: {
+                    type: 'object',
+                    properties: {
+                        enable: {
+                            type: 'boolean'
+                        },
+                        maxAttempts: {
+                            type: 'integer',
+                            minimum: 1,
+                            maximum: 20
+                        },
+                        delaySeconds: {
+                            type: 'integer',
+                            minimum: 5,
+                            maximum: 600
+                        },
+                        rateLimitDelaySeconds: {
+                            type: 'integer',
+                            minimum: 30,
+                            maximum: 600
+                        }
+                    },
+                    required: ['enable'],
+                    additionalProperties: false
+                },
                 addFriends: {
                     $ref: '#/definitions/only-enable'
                 },

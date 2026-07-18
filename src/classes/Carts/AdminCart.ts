@@ -3,6 +3,7 @@ import SKU from '@tf2autobot/tf2-sku';
 import Cart from './Cart';
 import Inventory from '../Inventory';
 import log from '../../lib/logger';
+import { inventoryLoadFailureMessage } from './inventoryLoadError';
 
 export default class AdminCart extends Cart {
     protected preSendOffer(): Promise<void> {
@@ -180,10 +181,7 @@ export default class AdminCart extends Cart {
                 })
                 .catch((err: Error) => {
                     log.error(`Failed to load admin inventories (${this.partner.getSteamID64()}): `, err);
-                    return reject(
-                        'Failed to load your inventory, Steam might be down. ' +
-                            'Please try again later. If you have your profile/inventory set to private, please set it to public and try again.'
-                    );
+                    return reject(inventoryLoadFailureMessage(err));
                 });
         });
     }

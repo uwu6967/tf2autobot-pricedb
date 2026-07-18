@@ -12,12 +12,15 @@ import {
     ActionRowBuilder,
     ButtonBuilder,
     ButtonStyle,
-    ChannelType
+    ChannelType,
+    ButtonInteraction,
+    APIEmbed
 } from 'discord.js';
 import log from '../lib/logger';
 import Options from './Options';
 import Bot from './Bot';
 import SteamID from 'steamid';
+import TradeOfferManager, { Meta } from '@tf2autobot/tradeoffer-manager';
 import { DiscordRedirectTarget } from '../lib/discordRedirect';
 import { BOT_COMMAND_NAMES, getSlashCommandDefinitions, resolveSlashRoute } from './DiscordSlashCommands';
 
@@ -48,6 +51,8 @@ export default class DiscordBot {
     }
 
     private static readonly UNHALT_BUTTON_ID = 'tf2autobot:unhalt';
+    private static readonly FACCEPT_PREFIX = 'tf2autobot:faccept:';
+    private static readonly FDECLINE_PREFIX = 'tf2autobot:fdecline:';
 
     public async start(): Promise<void> {
         try {
@@ -143,10 +148,91 @@ export default class DiscordBot {
         }
     }
 
+    /**
+     * Post a plain message to the configured ops channel (unhaltButton.channelId), if set.
+     */
+    public async sendOpsChannelMessage(content: string): Promise<void> {
+        const channel = await this.getOpsTextChannel();
+        if (!channel) {
+            return;
+        }
+
+        try {
+            await channel.send({ content: content.slice(0, 2000) });
+        } catch (err) {
+            log.warn('Failed to send ops channel message:', err);
+        }
+    }
+
+    /**
+     * Post FAccept / Decline buttons for an offer waiting for review.
+     */
+    public async sendOfferReviewButtons(options: {
+        offerId: string;
+        partnerName: string;
+        partnerSteamId: string;
+        reasons: string;
+    }): Promise<void> {
+        if (!this.client.isReady()) {
+            return;
+        }
+
+        const channel = await this.getOpsTextChannel();
+        if (!channel) {
+            log.warn('Cannot send offer review buttons — no ops channel configured');
+            return;
+        }
+
+        const row = new ActionRowBuilder<ButtonBuilder>().addComponents(
+            new ButtonBuilder()
+                .setCustomId(`${DiscordBot.FACCEPT_PREFIX}${options.offerId}`)
+                .setLabel('FAccept')
+                .setStyle(ButtonStyle.Success),
+            new ButtonBuilder()
+                .setCustomId(`${DiscordBot.FDECLINE_PREFIX}${options.offerId}`)
+                .setLabel('Decline')
+                .setStyle(ButtonStyle.Danger)
+        );
+
+        const content =
+            `⚠️ Offer \`#${options.offerId}\` from **${options.partnerName}** is waiting for review.\n` +
+            `Reasons: ${options.reasons}\n` +
+            `Partner: https://steamcommunity.com/profiles/${options.partnerSteamId}`;
+
+        try {
+            await channel.send({ content, components: [row] });
+            log.info(`Sent offer review buttons for #${options.offerId}`);
+        } catch (err) {
+            log.warn(`Failed to send offer review buttons for #${options.offerId}:`, err);
+        }
+    }
+
+    private async getOpsTextChannel(): Promise<TextChannel | null> {
+        const channelId = this.options.discordChat?.unhaltButton?.channelId?.trim();
+        if (!channelId || !this.client.isReady()) {
+            return null;
+        }
+
+        try {
+            const channel = await this.client.channels.fetch(channelId);
+            if (channel && channel.isTextBased() && !channel.isDMBased()) {
+                return channel as TextChannel;
+            }
+        } catch (err) {
+            log.warn('Failed to fetch ops channel:', err);
+        }
+
+        return null;
+    }
+
     private async registerSlashCommands(): Promise<void> {
         const definitions = getSlashCommandDefinitions();
 
-        // Guild commands update instantly (global can take up to ~1 hour to propagate).
+        // Guild commands update instantly. Clear global commands so Discord does not
+        // show duplicates (guild + global with the same name).
+        await this.client.application.commands.set([]);
+        log.info('Cleared global Discord slash commands');
+
         const guilds = [...this.client.guilds.cache.values()];
         for (const guild of guilds) {
             await guild.commands.set(definitions);
@@ -155,9 +241,9 @@ export default class DiscordBot {
             );
         }
 
-        // Keep global in sync for DMs / new guilds (may lag).
-        await this.client.application.commands.set(definitions);
-        log.info(`Registered ${definitions.length} Discord slash commands (global)`);
+        if (guilds.length === 0) {
+            log.warn('No Discord guilds available to register slash commands');
+        }
     }
 
     public stop(): void {
@@ -306,10 +392,20 @@ export default class DiscordBot {
             return;
         }
 
-        if (interaction.customId !== DiscordBot.UNHALT_BUTTON_ID) {
+        const customId = interaction.customId;
+
+        if (customId === DiscordBot.UNHALT_BUTTON_ID) {
+            await this.handleUnhaltButton(interaction);
             return;
         }
 
+        if (customId.startsWith(DiscordBot.FACCEPT_PREFIX) || customId.startsWith(DiscordBot.FDECLINE_PREFIX)) {
+            await this.handleOfferReviewButton(interaction);
+            return;
+        }
+    }
+
+    private async handleUnhaltButton(interaction: ButtonInteraction): Promise<void> {
         if (!this.isDiscordAdmin(interaction.user.id)) {
             await interaction.reply({
                 content: '⛔ Only admins can unhalt the bot.',
@@ -350,6 +446,80 @@ export default class DiscordBot {
         }
     }
 
+    private async handleOfferReviewButton(interaction: ButtonInteraction): Promise<void> {
+        const isAccept = interaction.customId.startsWith(DiscordBot.FACCEPT_PREFIX);
+        const offerId = interaction.customId
+            .slice(isAccept ? DiscordBot.FACCEPT_PREFIX.length : DiscordBot.FDECLINE_PREFIX.length)
+            .trim();
+
+        if (!/^\d+$/.test(offerId)) {
+            await interaction.reply({ content: '❌ Invalid offer id on button.', ephemeral: true });
+            return;
+        }
+
+        if (!this.isDiscordAdmin(interaction.user.id)) {
+            await interaction.reply({
+                content: '⛔ Only admins can force-accept or decline offers.',
+                ephemeral: true
+            });
+            return;
+        }
+
+        if (!this.bot.isReady) {
+            await interaction.reply({ content: '🛑 Bot is still booting, please wait.', ephemeral: true });
+            return;
+        }
+
+        const state = this.bot.manager.pollData.received[offerId];
+        if (state === undefined) {
+            await interaction.update({
+                content: `❌ Offer \`#${offerId}\` no longer exists.`,
+                components: []
+            });
+            return;
+        }
+
+        if (state !== TradeOfferManager.ETradeOfferState['Active']) {
+            await interaction.update({
+                content: `⚠️ Offer \`#${offerId}\` is no longer active (state: ${state}).`,
+                components: []
+            });
+            return;
+        }
+
+        const actionLabel = isAccept ? 'FAccept' : 'Decline';
+
+        try {
+            await interaction.deferUpdate();
+            const offer = await this.bot.trades.getOffer(offerId);
+            await this.bot.trades.applyActionToOffer(
+                isAccept ? 'accept' : 'decline',
+                'MANUAL-FORCE',
+                isAccept ? ((offer.data('meta') as Meta) ?? {}) : {},
+                offer
+            );
+
+            await interaction.editReply({
+                content:
+                    `${isAccept ? '✅' : '⛔'} **${actionLabel}** on offer \`#${offerId}\` ` +
+                    `by <@${interaction.user.id}>`,
+                components: []
+            });
+            log.info(
+                `Discord ${actionLabel} button pressed for #${offerId} by ${interaction.user.tag} (${interaction.user.id})`
+            );
+        } catch (err) {
+            log.error(`Failed handling ${actionLabel} button for #${offerId}:`, err);
+            const errMsg = err instanceof Error ? err.message : String(err);
+            await interaction
+                .followUp({
+                    content: `❌ Failed to ${actionLabel.toLowerCase()} offer \`#${offerId}\`: ${errMsg}`,
+                    ephemeral: true
+                })
+                .catch(() => undefined);
+        }
+    }
+
     public sendAnswer(origMessage: DiscordRedirectTarget, messageToSend: string): void {
         messageToSend = messageToSend.trim();
         const formattedMessage = DiscordBot.reformat(messageToSend);
@@ -374,6 +544,41 @@ export default class DiscordBot {
         } else {
             this.sendAnswerPart(origMessage, formattedMessage);
         }
+    }
+
+    public sendAnswerEmbed(origMessage: DiscordRedirectTarget, embed: APIEmbed): void {
+        const payload = { embeds: [embed] };
+
+        if (origMessage instanceof Message) {
+            void (origMessage.channel as TextChannel)
+                .send(payload)
+                .then(() =>
+                    log.info(
+                        `Embed sent to ${origMessage.author.tag} (${origMessage.author.id}): ${embed.title ?? ''}`
+                    )
+                )
+                .catch((err: unknown) => log.error('Failed to send embed to Discord:', err));
+            return;
+        }
+
+        const interaction = origMessage;
+        if (!interaction.deferred && !interaction.replied) {
+            void interaction.reply(payload).then(() => {
+                log.info(`Slash embed reply to ${interaction.user.tag}: ${embed.title ?? ''}`);
+            });
+            return;
+        }
+
+        if (interaction.deferred && !interaction.replied) {
+            void interaction.editReply(payload).then(() => {
+                log.info(`Slash embed reply to ${interaction.user.tag}: ${embed.title ?? ''}`);
+            });
+            return;
+        }
+
+        void interaction.followUp(payload).then(() => {
+            log.info(`Slash embed follow-up to ${interaction.user.tag}: ${embed.title ?? ''}`);
+        });
     }
 
     private sendAnswerPart(origMessage: DiscordRedirectTarget, message: string): void {

@@ -8,6 +8,7 @@ import log from '../../lib/logger';
 import { sendAlert } from '../DiscordWebhook/export';
 import { uptime } from '../../lib/tools/export';
 import { isBptfBanned } from '../../lib/bans';
+import { isInventoryLoadFailure, isSteamInventoryRateLimit } from './inventoryLoadError';
 
 export default class CartQueue {
     private carts: Cart[] = [];
@@ -15,6 +16,14 @@ export default class CartQueue {
     private busy = false;
 
     private queuePositionCheck: NodeJS.Timeout;
+
+    private inventoryRetryTimer: NodeJS.Timeout | null = null;
+
+    private inventoryRetryPending: {
+        isDonating: boolean;
+        isBuyingPremium: boolean;
+        steamID64: string;
+    } | null = null;
 
     constructor(private readonly bot: Bot) {
         this.bot = bot;
@@ -174,6 +183,12 @@ export default class CartQueue {
             return false;
         }
 
+        const steamID64 = steamID.toString();
+        if (this.inventoryRetryPending?.steamID64 === steamID64) {
+            this.clearInventoryRetry();
+            this.busy = false;
+        }
+
         this.carts.splice(position, 1);
         log.debug('Removed cart from the queue');
 
@@ -195,6 +210,129 @@ export default class CartQueue {
         return this.carts[index];
     }
 
+    private clearInventoryRetry(): void {
+        if (this.inventoryRetryTimer) {
+            clearTimeout(this.inventoryRetryTimer);
+            this.inventoryRetryTimer = null;
+        }
+        this.inventoryRetryPending = null;
+    }
+
+    private getInventoryRetryDelaySeconds(err: unknown, failCount: number): number {
+        const cfg = this.bot.options.miscSettings.cartInventoryRetry;
+        const base = isSteamInventoryRateLimit(err)
+            ? cfg?.rateLimitDelaySeconds ?? 120
+            : cfg?.delaySeconds ?? 60;
+        // Soft backoff: 1x, 1.5x, 2.25x… capped at 5 minutes
+        return Math.min(300, Math.round(base * Math.pow(1.5, Math.max(0, failCount - 1))));
+    }
+
+    private scheduleInventoryRetry(
+        cart: Cart,
+        isDonating: boolean,
+        isBuyingPremium: boolean,
+        attempt: number,
+        maxAttempts: number,
+        delaySeconds: number
+    ): void {
+        const steamID64 = cart.partner.getSteamID64();
+        this.clearInventoryRetry();
+        this.inventoryRetryPending = { isDonating, isBuyingPremium, steamID64 };
+        this.busy = true;
+
+        this.inventoryRetryTimer = setTimeout(() => {
+            this.inventoryRetryTimer = null;
+            this.inventoryRetryPending = null;
+
+            if (this.carts[0]?.partner.getSteamID64() !== steamID64) {
+                log.debug('Inventory retry skipped — cart no longer at front of queue');
+                this.busy = false;
+                this.handleQueue(false, false);
+                return;
+            }
+
+            if (cart.isCanceled) {
+                log.debug('Inventory retry skipped — cart was canceled');
+                this.carts.shift();
+                this.busy = false;
+                this.handleQueue(false, false);
+                return;
+            }
+
+            cart.sendNotification = `🔄 Retrying your offer now (attempt ${attempt}/${maxAttempts})...`;
+            this.busy = false;
+            this.handleQueue(isDonating, isBuyingPremium);
+        }, delaySeconds * 1000);
+    }
+
+    private notifyInventoryRetry(
+        cart: Cart,
+        attempt: number,
+        maxAttempts: number,
+        delaySeconds: number,
+        exhausted: boolean,
+        rateLimited: boolean
+    ): void {
+        const steamID64 = cart.partner.getSteamID64();
+        const name = this.bot.friends.getFriend(cart.partner)?.player_name ?? steamID64;
+
+        if (exhausted) {
+            const buyerMsg =
+                `❌ Failed to load your inventory after ${maxAttempts} attempts. ` +
+                `Steam might be rate-limiting or down, or your profile/inventory is private. Please try again later.`;
+            cart.sendNotification = buyerMsg;
+
+            const discordMsg =
+                `❌ **Cart inventory load failed** (gave up)\n` +
+                `Partner: ${name} (\`${steamID64}\`)\n` +
+                `Attempts: ${attempt}/${maxAttempts}`;
+
+            this.sendDiscordInventoryNotice(discordMsg, cart, attempt, maxAttempts, delaySeconds, true);
+            return;
+        }
+
+        cart.sendNotification =
+            `⏳ Failed to load your inventory${rateLimited ? ' (Steam rate limit 429)' : ''}. ` +
+            `Retrying in ${delaySeconds} seconds (attempt ${attempt}/${maxAttempts}). ` +
+            `Please keep your inventory public.`;
+
+        const discordMsg =
+            `⏳ **Cart inventory load failed — retry scheduled**${rateLimited ? ' (429)' : ''}\n` +
+            `Partner: ${name} (\`${steamID64}\`)\n` +
+            `Retry in: **${delaySeconds}s**\n` +
+            `Attempt: ${attempt}/${maxAttempts}`;
+
+        this.sendDiscordInventoryNotice(discordMsg, cart, attempt, maxAttempts, delaySeconds, false);
+    }
+
+    private sendDiscordInventoryNotice(
+        content: string,
+        cart: Cart,
+        attempt: number,
+        maxAttempts: number,
+        delaySeconds: number,
+        exhausted: boolean
+    ): void {
+        const opt = this.bot.options;
+        const dwEnabled =
+            opt.discordWebhook.sendAlert.enable && opt.discordWebhook.sendAlert.url.main !== '';
+
+        if (dwEnabled) {
+            sendAlert(
+                'cart-inventory-retry',
+                this.bot,
+                content,
+                attempt,
+                null,
+                [cart.partner.getSteamID64(), String(maxAttempts), String(delaySeconds), exhausted ? '1' : '0']
+            );
+        } else {
+            this.bot.messageAdmins(content.replace(/\*\*/g, ''), []);
+        }
+
+        void this.bot.discordBot?.sendOpsChannelMessage(content);
+    }
+
     private handleQueue(isDonating: boolean, isBuyingPremium: boolean): void {
         log.debug('Handling queue...');
 
@@ -212,6 +350,8 @@ export default class CartQueue {
         log.debug('Constructing offer');
 
         const custom = this.bot.options.commands.addToQueue;
+        let keepInQueueForRetry = false;
+
         Promise.resolve(cart.constructOffer())
             .then(alteredMessage => {
                 log.debug('Constructed offer');
@@ -267,6 +407,41 @@ export default class CartQueue {
                 }
             })
             .catch(err => {
+                const retryOpt = this.bot.options.miscSettings.cartInventoryRetry;
+                const retryEnabled = retryOpt?.enable !== false;
+                const maxAttempts = retryOpt?.maxAttempts ?? 8;
+
+                if (retryEnabled && isInventoryLoadFailure(err)) {
+                    cart.inventoryLoadAttempts += 1;
+                    const attempt = cart.inventoryLoadAttempts;
+                    const rateLimited = isSteamInventoryRateLimit(err);
+                    const delaySeconds = this.getInventoryRetryDelaySeconds(err, attempt);
+
+                    if (attempt < maxAttempts) {
+                        keepInQueueForRetry = true;
+                        this.notifyInventoryRetry(
+                            cart,
+                            attempt,
+                            maxAttempts,
+                            delaySeconds,
+                            false,
+                            rateLimited
+                        );
+                        this.scheduleInventoryRetry(
+                            cart,
+                            isDonating,
+                            isBuyingPremium,
+                            attempt + 1,
+                            maxAttempts,
+                            delaySeconds
+                        );
+                        return;
+                    }
+
+                    this.notifyInventoryRetry(cart, attempt, maxAttempts, delaySeconds, true, rateLimited);
+                    return;
+                }
+
                 if (!(err instanceof Error)) {
                     cart.sendNotification = `❌ I failed to make the offer! Reason: ${err as string}.`;
                 } else {
@@ -283,6 +458,13 @@ export default class CartQueue {
                 }
             })
             .finally(() => {
+                if (keepInQueueForRetry) {
+                    log.debug(
+                        `Keeping cart ${cart.partner.getSteamID64()} in queue for inventory retry`
+                    );
+                    return;
+                }
+
                 log.debug(`Done handling cart ${cart.partner.getSteamID64()}`);
 
                 // Remove cart from the queue

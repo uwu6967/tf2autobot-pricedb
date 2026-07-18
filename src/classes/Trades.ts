@@ -765,7 +765,9 @@ export default class Trades {
                     log.debug('Set counteroffer message...');
                     const customMessage = opt.customMessage.counterOffer;
                     counter.setMessage(
-                        customMessage
+                        opt.globalDisable?.messages
+                            ? ''
+                            : customMessage
                             ? customMessage
                             : "Your offer contains wrong value. You've probably made a few mistakes, here's the correct offer."
                     );

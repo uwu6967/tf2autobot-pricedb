@@ -41,6 +41,13 @@ export const DEFAULTS: JsonOptions = {
         startHalted: {
             enable: false
         },
+        // Auto-retry checkout when partner inventory fails to load
+        cartInventoryRetry: {
+            enable: true,
+            maxAttempts: 8,
+            delaySeconds: 60,
+            rateLimitDelaySeconds: 120
+        },
         addFriends: {
             enable: true
         },
@@ -1209,6 +1216,13 @@ interface OnlyEnable {
     enable?: boolean;
 }
 
+interface CartInventoryRetry extends OnlyEnable {
+    maxAttempts?: number;
+    delaySeconds?: number;
+    /** Extra wait when Steam returns HTTP 429 (rate limit). */
+    rateLimitDelaySeconds?: number;
+}
+
 // ------------ Global Disable ------------
 
 interface GlobalDisable {
@@ -1280,6 +1294,7 @@ interface MiscSettings {
     createListings?: OnlyEnable;
     pricedbStore?: PriceDBStore;
     startHalted?: OnlyEnable;
+    cartInventoryRetry?: CartInventoryRetry;
     counterOffer?: Counteroffer;
     addFriends?: OnlyEnable;
     sendGroupInvite?: OnlyEnable;

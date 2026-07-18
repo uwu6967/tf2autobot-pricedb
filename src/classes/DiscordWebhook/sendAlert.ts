@@ -46,7 +46,8 @@ type AlertType =
     | 'onBulkUpdatePartialPriced'
     | 'isPartialPriced'
     | 'unusualInvalidItems'
-    | 'failedToUpdateOldPrices';
+    | 'failedToUpdateOldPrices'
+    | 'cart-inventory-retry';
 
 export default function sendAlert(
     type: AlertType,
@@ -66,6 +67,12 @@ export default function sendAlert(
         title = 'Low Pure Alert';
         description = msg;
         color = '16776960'; // yellow
+    } else if (type === 'cart-inventory-retry') {
+        const exhausted = items?.[3] === '1';
+        title = exhausted ? 'Cart inventory load failed' : 'Cart inventory retry';
+        description = msg;
+        color = exhausted ? '16711680' : '16776960'; // red / yellow
+        footer = items?.[0] ? `${items[0]} • ` : '';
     } else if (type === 'queue-problem-perform-restart') {
         title = 'Queue Problem Alert';
         description = `Current position: ${positionOrCount}, automatic restart initialized...\n\n${uptime()}`;

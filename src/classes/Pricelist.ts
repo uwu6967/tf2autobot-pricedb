@@ -564,19 +564,73 @@ export default class Pricelist extends EventEmitter {
         return matchedNames;
     }
 
+    private getPriceSourceErrorMessage(err: unknown): string {
+        const e = err as ErrorRequest;
+        if (e?.body?.message) {
+            return String(e.body.message);
+        }
+        if (e?.body?.error) {
+            return String(e.body.error);
+        }
+        if (e?.response?.data?.error) {
+            return String(e.response.data.error);
+        }
+        if (e?.response?.data?.message) {
+            return String(e.response.data.message);
+        }
+        if (e?.message) {
+            return String(e.message);
+        }
+        return String(err);
+    }
+
+    private isPriceNotFoundError(err: unknown): boolean {
+        const e = err as ErrorRequest;
+        const status = e?.response?.status ?? e?.statusCode ?? e?.body?.statusCode;
+        if (status === 404) {
+            return true;
+        }
+        return /not found|status code 404|\b404\b/i.test(this.getPriceSourceErrorMessage(err));
+    }
+
+    /**
+     * Friendly message when PriceDB has no price — tell the user to price manually + backpack.tf link.
+     */
+    private missingPriceManualHint(sku: string, side: 'sell' | 'buy' | 'prices'): string {
+        let name = sku;
+        try {
+            name = this.schema.getName(SKU.fromString(sku), false) || sku;
+        } catch {
+            // keep sku
+        }
+
+        const bptfUrl = `https://backpack.tf/classifieds?item=${encodeURIComponent(name)}`;
+        const sideLabel = side === 'prices' ? 'a price' : `a ${side} price`;
+
+        return (
+            `PriceDB has no ${sideLabel} for "${name}" (\`${sku}\`).\n` +
+            `Please set the next price manually instead.\n` +
+            `Click here to check on backpack.tf: ${bptfUrl}`
+        );
+    }
+
+    private priceFetchError(sku: string, side: 'sell' | 'buy' | 'prices', err: unknown): Error {
+        if (this.isPriceNotFoundError(err)) {
+            return new Error(this.missingPriceManualHint(sku, side));
+        }
+
+        const detail = this.getPriceSourceErrorMessage(err);
+        const label = side === 'prices' ? 'prices' : `${side} price`;
+        return new Error(`Unable to get current ${label} for ${sku}: ${detail}`);
+    }
+
     private async validateEntry(entry: Entry, src: PricelistChangedSource, isBulk: boolean): Promise<void> {
         const keyPrices = this.getKeyPrices;
 
         if (entry.autoprice && !entry.isPartialPriced && !isBulk) {
             // skip this part if autoprice is false and/or isPartialPriced is true
             const price: GetItemPriceResponse = await this.priceSource.getPrice(entry.sku).catch(err => {
-                throw new Error(
-                    `Unable to get current prices for ${entry.sku}: ${
-                        (err as ErrorRequest).body && (err as ErrorRequest).body.message
-                            ? (err as ErrorRequest).body.message
-                            : (err as ErrorRequest).message
-                    }`
-                );
+                throw this.priceFetchError(entry.sku, 'prices', err);
             });
 
             const newPrices = {
@@ -611,13 +665,7 @@ export default class Pricelist extends EventEmitter {
             entry.time = price.time;
         } else if (!entry.autoprice && entry.autopriceSell && !isBulk) {
             const price: GetItemPriceResponse = await this.priceSource.getPrice(entry.sku).catch(err => {
-                throw new Error(
-                    `Unable to get current sell price for ${entry.sku}: ${
-                        (err as ErrorRequest).body && (err as ErrorRequest).body.message
-                            ? (err as ErrorRequest).body.message
-                            : (err as ErrorRequest).message
-                    }`
-                );
+                throw this.priceFetchError(entry.sku, 'sell', err);
             });
 
             if (!entry.buy) {
@@ -628,13 +676,7 @@ export default class Pricelist extends EventEmitter {
             entry.time = price.time;
         } else if (!entry.autoprice && entry.autopriceBuy && !isBulk) {
             const price: GetItemPriceResponse = await this.priceSource.getPrice(entry.sku).catch(err => {
-                throw new Error(
-                    `Unable to get current buy price for ${entry.sku}: ${
-                        (err as ErrorRequest).body && (err as ErrorRequest).body.message
-                            ? (err as ErrorRequest).body.message
-                            : (err as ErrorRequest).message
-                    }`
-                );
+                throw this.priceFetchError(entry.sku, 'buy', err);
             });
 
             if (!entry.sell) {
@@ -1956,8 +1998,15 @@ export class ParsedPrice {
 interface ErrorRequest {
     body?: ErrorBody;
     message?: string;
+    statusCode?: number;
+    response?: {
+        status?: number;
+        data?: { error?: string; message?: string };
+    };
 }
 
 interface ErrorBody {
     message: string;
+    statusCode?: number;
+    error?: string;
 }

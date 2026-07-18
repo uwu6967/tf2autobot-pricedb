@@ -9,6 +9,7 @@ import TF2Inventory from '../TF2Inventory';
 import log from '../../lib/logger';
 import { noiseMakers } from '../../lib/data';
 import { pure } from '../../lib/tools/export';
+import { inventoryLoadFailureMessage } from './inventoryLoadError';
 
 // TODO: https://github.com/TF2Autobot/tf2autobot/pull/1520#issuecomment-1496466629
 
@@ -538,10 +539,7 @@ export default class UserCart extends Cart {
             await theirInventory.fetch();
         } catch (err) {
             log.error(`Failed to load inventories (${this.partnerSteamID}): `, err);
-            return Promise.reject(
-                'Failed to load your inventory, Steam might be down. ' +
-                    'Please try again later. If you have your profile/inventory set to private, please set it to public and try again.'
-            );
+            return Promise.reject(inventoryLoadFailureMessage(err));
         }
 
         this.theirInventoryCount = theirInventory.getTotalItems;

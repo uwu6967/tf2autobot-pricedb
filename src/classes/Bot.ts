@@ -461,10 +461,8 @@ export default class Bot {
             return;
         }
 
-        // Check if messages are globally disabled
-        if (this.options.globalDisable?.messages === true) {
-            return;
-        }
+        // Admins still get Steam alerts; globalDisable.messages only blocks trade partners
+        // (enforced inside sendMessage via isAdmin check).
 
         const message: string = args.length === 2 ? args[0] : args[1];
         const exclude: string[] = (args.length === 2 ? (args[1] as SteamID[]) : (args[2] as SteamID[])).map(steamid =>
@@ -1767,8 +1765,10 @@ export default class Bot {
             return;
         }
 
+        // Never Steam-chat non-admins when messages are globally disabled (Valve ban risk).
+        // Admins and Discord redirects above are still allowed.
         if (this.options.globalDisable?.messages === true && !this.isAdmin(steamID)) {
-            log.debug(`Steam message not sent (globally disabled) to ${steamID.toString()}: ${message}`);
+            log.debug(`Steam message not sent (buyer chat disabled) to ${steamID.toString()}: ${message}`);
             return;
         }
 

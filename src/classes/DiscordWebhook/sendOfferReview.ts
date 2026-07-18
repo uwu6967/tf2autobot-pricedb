@@ -196,12 +196,29 @@ export default function sendOfferReview(
             });
         }
 
-        sendWebhook(opt.offerReview.url, webhookReview, 'offer-review').catch(err => {
+        sendWebhook(opt.offerReview.url, webhookReview, 'offer-review')
+            .then(() => {
+                void bot.discordBot?.sendOfferReviewButtons({
+                    offerId: String(offer.id),
+                    partnerName: partnerNameNoFormat,
+                    partnerSteamId: offer.partner.getSteamID64(),
+                    reasons
+                });
+            })
+            .catch(err => {
             log.warn(`❌ Failed to send offer-review webhook (#${offer.id}) to Discord: `, err);
 
             const itemListx = listItems(offer, bot, itemsName, true);
 
             void sendToAdmin(bot, offer, reasons, value, keyPrices, itemListx, links);
+
+            // Still post action buttons so you can FAccept / Decline from Discord
+            void bot.discordBot?.sendOfferReviewButtons({
+                offerId: String(offer.id),
+                partnerName: partnerNameNoFormat,
+                partnerSteamId: offer.partner.getSteamID64(),
+                reasons
+            });
         });
     });
 }

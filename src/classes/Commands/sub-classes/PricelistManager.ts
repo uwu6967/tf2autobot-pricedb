@@ -16,6 +16,8 @@ import validator from '../../../lib/validator';
 import { testPriceKey } from '../../../lib/tools/export';
 import IPricer from '../../IPricer';
 import { Currency } from 'src/types/TeamFortress2';
+import { isDiscordRedirect } from '../../../lib/discordRedirect';
+import { buildAddedEntryEmbed, buildUpdatedEntryEmbed } from '../../../lib/pricelistEntryEmbed';
 
 // Pricelist manager
 
@@ -191,14 +193,47 @@ export default class PricelistManagerCommands {
         return this.bot.pricelist
             .addPrice({ entryData: params as EntryData, emitChange: true, src: PricelistChangedSource.Command })
             .then(entry => {
-                this.bot.sendMessage(
-                    steamID,
-                    `✅ Added "${entry.name}" (${priceKey})` + generateAddedReply(this.bot, isPremium, entry)
-                );
+                this.sendAddedReply(steamID, isPremium, entry, priceKey);
             })
             .catch(err => {
                 this.bot.sendMessage(steamID, `❌ Failed to add the item to the pricelist: ${(err as Error).message}`);
             });
+    }
+
+    private sendAddedReply(steamID: SteamID, isPremium: boolean, entry: Entry, priceKey: string): void {
+        if (isDiscordRedirect(steamID.redirectAnswerTo) && this.bot.discordBot) {
+            this.bot.discordBot.sendAnswerEmbed(
+                steamID.redirectAnswerTo,
+                buildAddedEntryEmbed(this.bot, entry, priceKey, isPremium)
+            );
+            return;
+        }
+
+        this.bot.sendMessage(
+            steamID,
+            `✅ Added "${entry.name}" (${priceKey})` + generateAddedReply(this.bot, isPremium, entry)
+        );
+    }
+
+    private sendUpdatedReply(
+        steamID: SteamID,
+        isPremium: boolean,
+        oldEntry: Entry,
+        newEntry: Entry,
+        priceKey: string
+    ): void {
+        if (isDiscordRedirect(steamID.redirectAnswerTo) && this.bot.discordBot) {
+            this.bot.discordBot.sendAnswerEmbed(
+                steamID.redirectAnswerTo,
+                buildUpdatedEntryEmbed(this.bot, oldEntry, newEntry, priceKey, isPremium)
+            );
+            return;
+        }
+
+        this.bot.sendMessage(
+            steamID,
+            `✅ Updated "${newEntry.name}" (${priceKey})` + this.generateUpdateReply(isPremium, oldEntry, newEntry)
+        );
     }
 
     async addbulkCommand(steamID: SteamID, message: string): Promise<void> {
@@ -1157,10 +1192,7 @@ export default class PricelistManagerCommands {
                 src: PricelistChangedSource.Command
             })
             .then(entry => {
-                this.bot.sendMessage(
-                    steamID,
-                    `✅ Updated "${entry.name}" (${priceKey})` + this.generateUpdateReply(isPremium, itemEntry, entry)
-                );
+                this.sendUpdatedReply(steamID, isPremium, itemEntry, entry, priceKey);
             })
             .catch((err: ErrorRequest) => {
                 this.bot.sendMessage(

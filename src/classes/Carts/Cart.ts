@@ -51,6 +51,9 @@ export default abstract class Cart {
 
     protected cancelReason: string | undefined;
 
+    /** How many times inventory load has failed for this cart during checkout. */
+    inventoryLoadAttempts = 0;
+
     protected craftAll: string[] = [];
 
     protected uncraftAll: string[] = [];
