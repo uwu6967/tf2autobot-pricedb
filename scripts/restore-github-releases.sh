@@ -43,7 +43,7 @@ declare -A TAGS=(
     [v1.0.9]=17091b891a0a50ace6ff0f56c978bdea057cd80a
     [v1.0.10]=534a84927bdc22d249ef9eb1e6f9f7ef3076f25a
     [v1.0.11]=4afa0d12ae14036b1459f900f8d847234a2d66eb
-    [v1.0.12]=REPLACE_AFTER_COMMIT
+    [v1.0.12]=9047e3a8ae48f6f11bf939731a3764a7c8c1d219
 )
 
 LATEST_TAG="v1.0.12"
