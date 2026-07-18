@@ -55,7 +55,9 @@ const checks = [
     },
     {
         file: 'scripts/restore-github-releases.sh',
-        test: (content) => content.includes(`[v${version}]=`) && content.includes(`v${version} -`),
+        test: (content) =>
+            content.includes(`[v${version}]=`) &&
+            (content.includes(`v${version} -`) || content.includes(`v${version} —`)),
         label: 'restore-github-releases.sh entry for current version'
     }
 ];

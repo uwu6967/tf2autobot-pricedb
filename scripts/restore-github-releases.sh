@@ -39,7 +39,7 @@ declare -A TITLES=(
     [v1.0.4]="v1.0.4 - !updaterepo dist build safety"
     [v1.0.5]="v1.0.5 - panel IPC string error messages"
     [v1.0.6]="v1.0.6 — The Big One: 5.17.0 blank bot + Discord + partial autoprice + panel"
-    [v1.0.7]=30285d385fcd69a464b84b2dfa55eb1264feb904"v1.0.7 — Cost basis, boot-safe IPC, smarter partial autoprice"
+    [v1.0.7]="v1.0.7 — Cost basis, boot-safe IPC, smarter partial autoprice"
 )
 
 for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7; do
