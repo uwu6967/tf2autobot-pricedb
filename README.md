@@ -6,11 +6,9 @@ This repository is a personal fork built on top of the [pricedb.io edition](http
 
 **Public blank-bot releases:** [uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb/releases) (use with [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)).
 
-**Want Pure Hive (keys/ref sharing between bots)?** Use the separate fork: [**tf2autobot-pricedb-hive**](https://github.com/uwu6967/tf2autobot-pricedb-hive) + [**tf2autobot-pure-hive**](https://github.com/uwu6967/tf2autobot-pure-hive) API.
+**Current version:** 1.0.10
 
-**Current version:** 1.0.9
-
-Latest release: [v1.0.9](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.9)
+Latest release: [v1.0.10](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.10)
 
 Clone a clean install:
 
@@ -48,7 +46,7 @@ The companion web panel lives in a separate repository:
 
 The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
 
-**Tested together:** bot **v1.0.9** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
+**Tested together:** bot **v1.0.10** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
 
 ### Running bot + panel together
 

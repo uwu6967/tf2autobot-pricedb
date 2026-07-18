@@ -17,7 +17,19 @@ export interface FIFOEntry {
     diffMetal: number; // Distributed (actual - pricelist) delta in refined, negative means we underpaid
     tradeId: string;
     timestamp: number;
+    /** Mann Co. key price in refined at purchase time (for history display). */
+    keyPriceMetal?: number;
     diffVersion?: number;
+}
+
+export interface PurchaseLot {
+    quantity: number;
+    paidKeys: number;
+    paidMetal: number;
+    keyPriceMetal: number | null;
+    tradeId: string;
+    timestamp: number;
+    keyPriceEstimated: boolean;
 }
 
 /**
@@ -119,7 +131,8 @@ export default class InventoryCostBasis {
         costMetal: number,
         diffKeys: number,
         diffMetal: number,
-        tradeId: string
+        tradeId: string,
+        keyPriceMetal?: number
     ): Promise<void> {
         const entry: FIFOEntry = {
             sku,
@@ -129,6 +142,10 @@ export default class InventoryCostBasis {
             diffMetal,
             tradeId,
             timestamp: Date.now(),
+            keyPriceMetal:
+                typeof keyPriceMetal === 'number' && Number.isFinite(keyPriceMetal) && keyPriceMetal > 0
+                    ? keyPriceMetal
+                    : undefined,
             diffVersion: CURRENT_DIFF_VERSION
         };
 
@@ -136,7 +153,9 @@ export default class InventoryCostBasis {
         await this.save();
 
         log.debug(
-            `Added FIFO entry: ${sku} @ ${costKeys}k ${costMetal}r (diff: ${diffKeys}k ${diffMetal}r) [${tradeId}]`
+            `Added FIFO entry: ${sku} @ ${costKeys}k ${costMetal}r (diff: ${diffKeys}k ${diffMetal}r, key=${
+                entry.keyPriceMetal ?? '?'
+            }r) [${tradeId}]`
         );
     }
 
@@ -178,6 +197,7 @@ export default class InventoryCostBasis {
                             diffMetal: 0,
                             tradeId: 'ESTIMATE',
                             timestamp: Date.now(),
+                            keyPriceMetal: this.bot.pricelist.getKeyPrice.metal,
                             diffVersion: CURRENT_DIFF_VERSION
                         };
                         removed.push(syntheticEntry);
@@ -213,6 +233,31 @@ export default class InventoryCostBasis {
      */
     peekItem(sku: string): FIFOEntry | null {
         return this.fifoEntries.find(entry => entry.sku === sku) || null;
+    }
+
+    /**
+     * Actual paid scrap for one FIFO unit (pricelist buy + distributed diff),
+     * using that lot's key rate when available.
+     */
+    entryPaidScrap(entry: FIFOEntry, fallbackKeyPriceMetal: number): number {
+        const keyRate =
+            typeof entry.keyPriceMetal === 'number' && entry.keyPriceMetal > 0
+                ? entry.keyPriceMetal
+                : fallbackKeyPriceMetal;
+        const paidKeys = entry.costKeys + entry.diffKeys;
+        const paidMetal = entry.costMetal + entry.diffMetal;
+        return Math.round(paidKeys * Currencies.toScrap(keyRate) + Currencies.toScrap(paidMetal));
+    }
+
+    /**
+     * Sell floor scrap for the next unit that would be sold (oldest remaining FIFO) + min profit.
+     */
+    getNextSellFloorScrap(sku: string, keyPriceMetal: number, minProfitScrap: number): number | null {
+        const next = this.peekItem(sku);
+        if (!next) {
+            return null;
+        }
+        return this.entryPaidScrap(next, keyPriceMetal) + Math.max(0, minProfitScrap);
     }
 
     /**
@@ -312,6 +357,65 @@ export default class InventoryCostBasis {
      */
     getAllEntries(): FIFOEntry[] {
         return [...this.fifoEntries];
+    }
+
+    /**
+     * Stock-only purchase lots for a SKU (FIFO remaining units), grouped by trade + paid price + key rate.
+     * Caps to current stock when FIFO count and stock disagree.
+     */
+    getSkuPurchaseLots(sku: string, stockCount: number): PurchaseLot[] {
+        const entries = this.fifoEntries.filter(entry => entry.sku === sku);
+        if (entries.length === 0 || stockCount <= 0) {
+            return [];
+        }
+
+        // Remaining FIFO is sold oldest-first; if we have extras vs live stock, keep the newest units.
+        const relevant =
+            entries.length > stockCount ? entries.slice(entries.length - stockCount) : entries;
+
+        const fallbackKey = this.bot.pricelist.getKeyPrice.metal;
+        const lots: PurchaseLot[] = [];
+
+        for (const entry of relevant) {
+            const paidKeys = entry.costKeys + entry.diffKeys;
+            const paidMetal = entry.costMetal + entry.diffMetal;
+            const keyPriceMetal =
+                typeof entry.keyPriceMetal === 'number' && entry.keyPriceMetal > 0
+                    ? entry.keyPriceMetal
+                    : null;
+            const last = lots[lots.length - 1];
+            const sameLot =
+                last &&
+                last.tradeId === entry.tradeId &&
+                last.paidKeys === paidKeys &&
+                last.paidMetal === paidMetal &&
+                last.keyPriceMetal === keyPriceMetal;
+
+            if (sameLot) {
+                last.quantity += 1;
+                continue;
+            }
+
+            lots.push({
+                quantity: 1,
+                paidKeys,
+                paidMetal,
+                keyPriceMetal,
+                tradeId: entry.tradeId,
+                timestamp: entry.timestamp,
+                keyPriceEstimated: keyPriceMetal === null
+            });
+        }
+
+        // Attach fallback key rate for display when historical rate was not logged
+        for (const lot of lots) {
+            if (lot.keyPriceMetal === null) {
+                lot.keyPriceMetal = fallbackKey;
+                lot.keyPriceEstimated = true;
+            }
+        }
+
+        return lots;
     }
 
     /**

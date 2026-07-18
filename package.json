@@ -1,6 +1,6 @@
 {
     "name": "tf2autobot-pricedb-io",
-    "version": "1.0.9",
+    "version": "1.0.10",
     "upstreamVersion": "5.17.0",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
@@ -31,7 +31,7 @@
         "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "Pure Hive moved to a separate fork: github.com/uwu6967/tf2autobot-pricedb-hive (API: tf2autobot-pure-hive). This blank bot is trading-only again.",
+    "updateMessage": "FIFO purchase history on !get / Discord, lot key-rate profit, and auto sell reprice from the next FIFO lot after a sale.",
     "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",
