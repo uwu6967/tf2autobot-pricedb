@@ -27,7 +27,7 @@ declare -A TAGS=(
     [v1.0.3]=5772801c35133dbccaddd52cf40897dc310af547
     [v1.0.4]=e245a83ad9257deaf405a4e8a45b5035874d5ecd
     [v1.0.5]=8214498ab4de999bc1d40e96dfb358924867b65b
-    [v1.0.6]=6e907615c050bad688534ca54be6ab42d737c513
+    [v1.0.6]=5723c8e3e4c931f0722d286a386fb7c9826eac03
 )
 
 declare -A TITLES=(
@@ -37,7 +37,7 @@ declare -A TITLES=(
     [v1.0.3]="v1.0.3 - Steam rate limit resilience"
     [v1.0.4]="v1.0.4 - !updaterepo dist build safety"
     [v1.0.5]="v1.0.5 - panel IPC string error messages"
-    [v1.0.6]="v1.0.6 - The Big One: 5.17.0 blank bot + Discord + partial autoprice + panel"
+    [v1.0.6]=5723c8e3e4c931f0722d286a386fb7c9826eac03
 )
 
 for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6; do
