@@ -40,6 +40,7 @@ declare -A TAGS=(
     [v1.0.6]=fa9ab53985b386721751c50dfcacece5cca150c7
     [v1.0.7]=7d490805537dd488ce5d99c89ffc9d1c0d5d81e0
     [v1.0.8]=7b60070400f08703951a5da3389ec3626c994d45
+    [v1.0.10]=c4aba934530a8d7e972cd9f9f997ebe1ebd77c6e
 )
 
 declare -A TITLES=(
@@ -53,9 +54,10 @@ declare -A TITLES=(
     [v1.0.7]="v1.0.7 — Cost basis, boot-safe IPC, smarter partial autoprice"
     [v1.0.8]="v1.0.8 — Pure Hive keys/ref sharing"
     [v1.0.9]="v1.0.9 — Pure Hive moved to separate fork"
+    [v1.0.10]="v1.0.10 — FIFO purchase history and sell reprice"
 )
 
-for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9; do
+for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9 v1.0.10; do
     sha="${TAGS[$tag]}"
     notes="$NOTES_DIR/${tag}.md"
 
@@ -95,4 +97,4 @@ for tag in v1.0.0 v1.0.1 v1.0.2 v1.0.3 v1.0.4 v1.0.5 v1.0.6 v1.0.7 v1.0.8 v1.0.9
     fi
 done
 
-echo "Done. Latest release should be v1.0.9 under $LOGIN."
+echo "Done. Latest release should be v1.0.10 under $LOGIN."
