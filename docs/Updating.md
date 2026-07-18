@@ -51,7 +51,8 @@ pm2 restart <your-panel>
 
 | Tag | Highlights |
 |---|---|
-| **v1.0.11** | `!setcost` + full wiki rework |
+| **v1.0.12** | Trade summaries: keys used + ≈ key worth |
+| v1.0.11 | `!setcost` + full wiki rework |
 | v1.0.10 | FIFO purchase history, lot profit, sell reprice |
 | v1.0.9 | Hive moved to separate fork |
 | v1.0.8 | (superseded) Hive briefly in main |

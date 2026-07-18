@@ -6,9 +6,9 @@ This repository is a personal fork built on top of the [pricedb.io edition](http
 
 **Public blank-bot releases:** [uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb/releases) (use with [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)).
 
-**Current version:** 1.0.11
+**Current version:** 1.0.12
 
-Latest release: [v1.0.11](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.11)
+Latest release: [v1.0.12](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.12)
 
 Clone a clean install:
 
@@ -46,7 +46,7 @@ The companion web panel lives in a separate repository:
 
 The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
 
-**Tested together:** bot **v1.0.11** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
+**Tested together:** bot **v1.0.12** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
 
 ### Running bot + panel together
 
@@ -85,6 +85,7 @@ Compared to upstream TF2Autobot, this lineage adds:
 - **[pricedb.io](https://pricedb.io)** as the default pricing source (replacing the old prices.tf workflow)
 - **Partial autoprice** — live buy *or* sell while the other side stays manual
 - **FIFO cost basis** — purchase history on `!get`, lot-accurate profit, sell reprice, manual `!setcost`
+- **Trade worth in keys** — offer summaries show keys used + ≈ key worth
 - **Discord** — version alerts, Autokeys / Unhalt, pricelist slash commands
 - **Panel IPC** — readable errors, boot-safe calls, Unlisted Stock inventory
 - **PriceDB Store** / **Mannco.store** / **Journal.tf** integrations

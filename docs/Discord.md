@@ -30,8 +30,18 @@ Restart the bot after changing the token.
 | **Unhalt** | Useful at startup without Steam chat |
 | Slash commands | `/add`, `/update`, `/remove`, `/get`, `/setcost`, `/autokeys`, `/hive` (Hive fork only), … |
 | Multi-embed replies | e.g. `/get` entry + purchase history |
+| **Trade worth in keys** | Accepted / review summaries show keys used and ≈ key worth |
 
 Admin-only slash commands refuse non-admins.
+
+### Trade summary extras
+
+Trade messages (Discord embeds / Steam chat) include:
+
+- **Keys used** — how many Mann Co. keys each side gave  
+- **Worth** — metal total ≈ keys at the offer’s key rate (or current key price)
+
+When both sides have the same value, one worth line is shown; otherwise each side is listed.
 
 ## Useful slash commands
 

@@ -4,7 +4,7 @@ Documentation for **[uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2a
 
 Browse online: **[docs site](https://uwu6967.github.io/tf2autobot-pricedb/Home.html)** · **[GitHub Wiki](https://github.com/uwu6967/tf2autobot-pricedb/wiki)**
 
-**Current bot release:** [v1.0.11](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.11) · **Panel:** [v3.6.2](https://github.com/uwu6967/tf2autobot-gui-panel/releases/tag/v3.6.2)
+**Current bot release:** [v1.0.12](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.12) · **Panel:** [v3.6.2](https://github.com/uwu6967/tf2autobot-gui-panel/releases/tag/v3.6.2)
 
 ---
 
