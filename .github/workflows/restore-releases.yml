@@ -18,6 +18,9 @@ jobs:
               with:
                   fetch-depth: 0
 
+            - name: Sync release targets and Latest flag
+              run: ./scripts/sync-release-targets.sh
+
             - name: Restore GitHub releases as uwu6967
               env:
                   UWU6967_GH_TOKEN: ${{ secrets.UWU6967_GH_TOKEN }}

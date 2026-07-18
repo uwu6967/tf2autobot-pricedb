@@ -56,7 +56,7 @@ function main() {
 
     let latestTag;
     try {
-        latestTag = runGh(['release', 'list', '-R', repo, '--limit', '1', '--json', 'tagName', '--jq', '.[0].tagName']);
+        latestTag = runGh(['api', `repos/${repo}/releases/latest`, '--jq', '.tag_name']);
     } catch (err) {
         console.error('FAIL: could not read latest GitHub release');
         console.error(err.stderr || err.message || err);
@@ -65,21 +65,7 @@ function main() {
 
     if (latestTag !== tag) {
         console.error(`FAIL: latest GitHub release is ${latestTag}, expected ${tag}`);
-        process.exit(1);
-    }
-
-    let isLatest;
-    try {
-        isLatest = runGh(['release', 'view', tag, '-R', repo, '--json', 'isLatest', '--jq', '.isLatest']);
-    } catch (err) {
-        console.error(`FAIL: could not read isLatest for ${tag}`);
-        console.error(err.stderr || err.message || err);
-        process.exit(1);
-    }
-
-    if (isLatest !== 'true') {
-        console.error(`FAIL: release ${tag} is not marked as Latest on GitHub`);
-        console.error('Run: ./scripts/restore-github-releases.sh  (logged in as uwu6967)');
+        console.error('Run: gh release edit', tag, '--latest  (or ./scripts/restore-github-releases.sh as uwu6967)');
         process.exit(1);
     }
 
