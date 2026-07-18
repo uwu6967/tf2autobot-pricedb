@@ -2,6 +2,11 @@ name: Restore releases
 
 on:
     workflow_dispatch:
+    push:
+        branches: [master]
+        paths:
+            - 'scripts/restore-github-releases.sh'
+            - 'scripts/release-notes/**'
 
 jobs:
     restore:
