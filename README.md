@@ -6,9 +6,11 @@ This repository is a personal fork built on top of the [pricedb.io edition](http
 
 **Public blank-bot releases:** [uwu6967/tf2autobot-pricedb](https://github.com/uwu6967/tf2autobot-pricedb/releases) (use with [tf2autobot-gui-panel](https://github.com/uwu6967/tf2autobot-gui-panel)).
 
-**Current version:** 1.0.8
+**Want Pure Hive (keys/ref sharing between bots)?** Use the separate fork: [**tf2autobot-pricedb-hive**](https://github.com/uwu6967/tf2autobot-pricedb-hive) + [**tf2autobot-pure-hive**](https://github.com/uwu6967/tf2autobot-pure-hive) API.
 
-Latest release: [v1.0.8](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.8)
+**Current version:** 1.0.9
+
+Latest release: [v1.0.9](https://github.com/uwu6967/tf2autobot-pricedb/releases/tag/v1.0.9)
 
 Clone a clean install:
 
@@ -46,7 +48,7 @@ The companion web panel lives in a separate repository:
 
 The panel does not log into Steam itself. It talks to your running bot over IPC while the bot handles all Steam and TF2 interactions.
 
-**Tested together:** bot **v1.0.8** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
+**Tested together:** bot **v1.0.9** + [GUI Panel](https://github.com/uwu6967/tf2autobot-gui-panel) **v3.6.2**.
 
 ### Running bot + panel together
 
@@ -88,25 +90,7 @@ Compared to upstream TF2Autobot, this lineage adds:
 - **Easy Copy Paste (ECP)** — user-friendly buy/sell command aliases in listing notes
 - **Improved Partial Price Update (PPU)** — FIFO queue logic for multi-unit stock protection
 - **Separate key buy/sell rates** for more accurate trade valuation
-- **Pure Hive** — opt-in keys/ref sharing between linked fork bots (mutual link + Hive API)
 
-## Pure Hive
-
-Bots running this fork can join a shared **Pure Hive** to move keys and refined metal between each other (auto-rebalance + manual push). Pure never moves without a **mutual link**.
-
-See **[wiki/Pure-Hive.md](wiki/Pure-Hive.md)** for setup. The companion API is [uwu6967/tf2autobot-pure-hive](https://github.com/uwu6967/tf2autobot-pure-hive).
-
-```bash
-# Hive API
-git clone https://github.com/uwu6967/tf2autobot-pure-hive.git ../hive-api && cd ../hive-api && cp template.env .env && npm install && npm start
-npm run token -- "my-bot"
-
-# Bot .env
-HIVE_TOKEN=hive_...
-HIVE_API_URL=http://127.0.0.1:3950
-
-# Then: hive.enable=true in options.json, !hive link / !hive accept
-```
 
 ## Requirements
 
@@ -348,7 +332,6 @@ Full guides are available on the **[project wiki](https://github.com/uwu6967/tf2
 - [Configuring the Bot](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Configuring-the-Bot)
 - [options.json reference](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Configure-your-options.json-file)
 - [PriceDB Store](https://github.com/uwu6967/tf2autobot-pricedb/wiki/PriceDB-Store)
-- [Pure Hive](wiki/Pure-Hive.md)
 - [Common Errors](https://github.com/uwu6967/tf2autobot-pricedb/wiki/Common-Errors)
 - [FAQ](https://github.com/uwu6967/tf2autobot-pricedb/wiki/FAQ)
 
