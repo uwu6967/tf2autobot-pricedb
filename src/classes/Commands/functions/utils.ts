@@ -6,6 +6,7 @@ import levenshtein from 'js-levenshtein';
 import { UnknownDictionaryKnownValues } from '../../../types/common';
 import { MinimumItem } from '../../../types/TeamFortress2';
 import Bot from '../../Bot';
+import CommandParser from '../../CommandParser';
 import Pricelist, { Entry } from '../../Pricelist';
 import { genericNameAndMatch } from '../../Inventory';
 import { fixItem } from '../../../lib/items';
@@ -216,6 +217,32 @@ export function parseItemAndAmountFromMessage(message: string): { name: string; 
     }
 
     return { name: name, amount: amount };
+}
+
+function hasCartItemParam(params: UnknownDictionaryKnownValues): boolean {
+    return (
+        params.sku !== undefined ||
+        params.name !== undefined ||
+        params.item !== undefined ||
+        params.defindex !== undefined ||
+        params.id !== undefined
+    );
+}
+
+export function parseCartItemParams(paramString: string): UnknownDictionaryKnownValues {
+    const cleaned = removeLinkProtocol(paramString);
+    const { name, amount } = parseItemAndAmountFromMessage(cleaned);
+    const params = CommandParser.parseParams(name);
+
+    if (params.amount === undefined && /^[-]?\d+\s/.test(cleaned.trim())) {
+        params.amount = amount;
+    }
+
+    if (!hasCartItemParam(params) && name.trim() !== '') {
+        params.item = name.trim();
+    }
+
+    return params;
 }
 
 export function getItemFromParams(

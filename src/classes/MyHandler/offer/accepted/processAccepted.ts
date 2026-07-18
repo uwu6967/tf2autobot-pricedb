@@ -7,6 +7,7 @@ import { KeyPrices } from '../../../Pricelist';
 import log from '../../../../lib/logger';
 import * as t from '../../../../lib/tools/export';
 import { sendTradeSummary } from '../../../DiscordWebhook/export';
+import { getDiscordWebhookUrls } from '../../../DiscordWebhook/utils';
 import { FIFOEntry } from '../../../InventoryCostBasis';
 import { JournalTfBoughtItem, JournalTfSoldItem } from '../../../JournalTfManager';
 
@@ -56,7 +57,12 @@ export default async function processAccepted(
     const meta = offer.data('meta') as i.Meta;
     const highValue = offer.data('highValue') as i.HighValueOutput; // can be both offer received and offer sent
 
-    const isWebhookEnabled = opt.discordWebhook.tradeSummary.enable && opt.discordWebhook.tradeSummary.url.length > 0;
+    const isWebhookEnabled =
+        getDiscordWebhookUrls(
+            opt.discordWebhook.tradeSummary.url,
+            opt.discordWebhook.offerReview.url,
+            opt.discordWebhook.tradeSummary.enable
+        ).length > 0;
 
     if (offerReceived) {
         // doing this because if an offer is being made by bot (from command), then this is undefined

@@ -974,6 +974,27 @@ export default class DiscordBot {
         this.setPresence('halt');
     }
 
+    notifyAdmins(message: string): void {
+        if (!this.client.isReady()) {
+            return;
+        }
+
+        const formattedMessage = DiscordBot.reformat(message.trim());
+
+        for (const admin of this.admins) {
+            void this.client.users
+                .fetch(admin.discordID)
+                .then(user =>
+                    user.send(formattedMessage.slice(0, this.MAX_MESSAGE_LENGTH)).catch(err => {
+                        log.warn(`Failed to send version update DM to Discord admin ${admin.discordID}:`, err);
+                    })
+                )
+                .catch(err => {
+                    log.warn(`Failed to fetch Discord admin ${admin.discordID} for version update:`, err);
+                });
+        }
+    }
+
     unhalt(): void {
         this.setPresence('online');
     }

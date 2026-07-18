@@ -6,6 +6,8 @@ import { HighValue } from './Options';
 import Bot from './Bot';
 import { noiseMakers, spellsData, killstreakersData, sheensData } from '../lib/data';
 import Pricelist from './Pricelist';
+import { UNTRADABLE_JUNK_DEFINDEXES } from './untradableJunkDefindexes';
+import log from '../lib/logger';
 
 export default class Inventory {
     private readonly steamID: SteamID;
@@ -96,8 +98,7 @@ export default class Inventory {
 
         for (const sku in itemsTradable) {
             if (Object.prototype.hasOwnProperty.call(itemsTradable, sku)) {
-                const assetids = itemsTradable[sku].map(item => item.id);
-                const index = assetids.indexOf(assetid);
+                const index = itemsTradable[sku].findIndex(item => String(item.id) === String(assetid));
 
                 if (index !== -1) {
                     this.tradable[sku].splice(index, 1);
@@ -112,8 +113,7 @@ export default class Inventory {
 
         for (const sku in itemsNonTradable) {
             if (Object.prototype.hasOwnProperty.call(itemsNonTradable, sku)) {
-                const assetids = itemsNonTradable[sku].map(item => item.id);
-                const index = assetids.indexOf(assetid);
+                const index = itemsNonTradable[sku].findIndex(item => String(item.id) === String(assetid));
 
                 if (index !== -1) {
                     this.nonTradable[sku].splice(index, 1);
@@ -161,7 +161,7 @@ export default class Inventory {
                 continue;
             }
 
-            if (!this.tradable[sku].find(item => item.id === assetid)) {
+            if (!this.tradable[sku].find(item => String(item.id) === String(assetid))) {
                 continue;
             }
 
@@ -173,7 +173,7 @@ export default class Inventory {
                 continue;
             }
 
-            if (!this.nonTradable[sku].find(item => item.id === assetid)) {
+            if (!this.nonTradable[sku].find(item => String(item.id) === String(assetid))) {
                 continue;
             }
 
@@ -451,14 +451,22 @@ export default class Inventory {
         const isNormalizeCraftNumber = isAdmin ? false : bot.options.normalize.craftNumber[which];
 
         for (let i = 0; i < itemsCount; i++) {
-            const getSku = items[i].getSKU(
-                bot.schema,
-                isNormalizeFestivized,
-                isNormalizeStrangeAsSecondQuality,
-                isNormalizePainted,
-                isNormalizeCraftNumber,
-                this.paintedOptions
-            );
+            let getSku: { sku: string; isPainted: boolean };
+
+            try {
+                getSku = items[i].getSKU(
+                    bot.schema,
+                    isNormalizeFestivized,
+                    isNormalizeStrangeAsSecondQuality,
+                    isNormalizePainted,
+                    isNormalizeCraftNumber,
+                    this.paintedOptions
+                );
+            } catch (err) {
+                const itemName = items[i].market_hash_name ?? items[i].name ?? items[i].id;
+                log.warn(`Skipping inventory item ${itemName} (asset ${items[i].id}): failed to resolve SKU`, err);
+                continue;
+            }
 
             let sku = getSku.sku;
 
@@ -497,17 +505,11 @@ export default class Inventory {
         const result: string[] = [];
         for (const sku in this.nonTradable) {
             const item = SKU.fromString(sku);
-            if (
-                [
-                    536, // Noise Maker - TF Birthday
-                    537, // Party Hat
-                    655, // Spirit of Giving
-                    5826 // Soul Gargoyle
-                ].includes(item.defindex)
-            ) {
-                for (const itemWithAssetid of this.nonTradable[sku]) {
-                    result.push(itemWithAssetid.id);
-                }
+            if (!UNTRADABLE_JUNK_DEFINDEXES.has(item.defindex)) {
+                continue;
+            }
+            for (const itemWithAssetid of this.nonTradable[sku]) {
+                result.push(String(itemWithAssetid.id));
             }
         }
 

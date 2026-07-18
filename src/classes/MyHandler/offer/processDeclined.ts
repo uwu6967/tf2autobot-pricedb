@@ -3,6 +3,7 @@ import SKU from '@tf2autobot/tf2-sku';
 import Bot from '../../Bot';
 import * as t from '../../../lib/tools/export';
 import sendTradeDeclined from '../../DiscordWebhook/sendTradeDeclined';
+import { getDiscordWebhookUrls } from '../../DiscordWebhook/utils';
 import { KeyPrices } from '../../../classes/Pricelist';
 
 export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
@@ -24,7 +25,12 @@ export default function processDeclined(offer: i.TradeOffer, bot: Bot): void {
     const meta = offer.data('meta') as i.Meta;
     const highValue = offer.data('highValue') as i.HighValueOutput; // can be both offer received and offer sent
 
-    const isWebhookEnabled = opt.discordWebhook.declinedTrade.enable && opt.discordWebhook.declinedTrade.url.length > 0;
+    const isWebhookEnabled =
+        getDiscordWebhookUrls(
+            opt.discordWebhook.declinedTrade.url,
+            opt.discordWebhook.offerReview.url,
+            opt.discordWebhook.declinedTrade.enable
+        ).length > 0;
 
     if (offerReceived) {
         switch (offerReceived.reason) {

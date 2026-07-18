@@ -1,7 +1,7 @@
 import { TradeOffer, ItemsDict } from '@tf2autobot/tradeoffer-manager';
 import pluralize from 'pluralize';
 import Currencies from '@tf2autobot/tf2-currencies';
-import { getPartnerDetails, quickLinks, sendWebhook } from './utils';
+import { getDiscordWebhookUrls, getPartnerDetails, quickLinks, sendWebhook } from './utils';
 import { Webhook } from './interfaces';
 import log from '../../lib/logger';
 import * as t from '../../lib/tools/export';
@@ -239,7 +239,7 @@ export default async function sendTradeSummary(
         });
     }
 
-    const url = optDW.tradeSummary.url;
+    const url = getDiscordWebhookUrls(optDW.tradeSummary.url, optDW.offerReview.url, optDW.tradeSummary.enable);
 
     url.forEach((link, i) => {
         sendWebhook(link, acceptedTradeSummary, 'trade-summary', i).catch(err => {

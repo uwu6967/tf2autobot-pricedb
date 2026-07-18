@@ -5,7 +5,7 @@ import Currencies from '@tf2autobot/tf2-currencies';
 import dayjs from 'dayjs';
 
 import * as c from './sub-classes/export';
-import { removeLinkProtocol, getItemFromParams, getItemAndAmount } from './functions/utils';
+import { removeLinkProtocol, getItemFromParams, getItemAndAmount, parseCartItemParams } from './functions/utils';
 
 import Bot from '../Bot';
 import CommandParser from '../CommandParser';
@@ -254,6 +254,8 @@ export default class Commands {
                 void this.pManager.getGroupsCommand(steamID);
             } else if (command === 'autoadd' && isAdmin) {
                 this.pManager.autoAddCommand(steamID, message, prefix);
+            } else if (command === 'addpricedb' && isAdmin) {
+                this.pManager.addPricedbCommand(steamID, message, prefix);
             } else if (command === 'stopautoadd' && isAdmin) {
                 this.pManager.stopAutoAddCommand();
             } else if (['expand', 'delete', 'use'].includes(command) && isAdmin) {
@@ -1299,7 +1301,7 @@ export default class Commands {
             );
         }
 
-        const params = CommandParser.parseParams(CommandParser.removeCommand(removeLinkProtocol(message)));
+        const params = parseCartItemParams(CommandParser.removeCommand(removeLinkProtocol(message)));
         if (params.sku === undefined) {
             const item = getItemFromParams(steamID, params, this.bot);
             if (item === null) {
@@ -1401,7 +1403,7 @@ export default class Commands {
             );
         }
 
-        const params = CommandParser.parseParams(CommandParser.removeCommand(removeLinkProtocol(message)));
+        const params = parseCartItemParams(CommandParser.removeCommand(removeLinkProtocol(message)));
         if (params.sku === undefined) {
             const item = getItemFromParams(steamID, params, this.bot);
             if (item === null) {

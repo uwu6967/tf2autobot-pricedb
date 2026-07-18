@@ -6,6 +6,21 @@ import { AxiosError } from 'axios';
 import { ErrorFiltered } from '@tf2autobot/filter-axios-error';
 import { apiRequest } from '../../lib/apiRequest';
 
+/** Resolve webhook URLs, falling back to the offer review URL when the primary list is empty. */
+export function getDiscordWebhookUrls(primaryUrls: string[] | string, fallbackUrl: string, enabled: boolean): string[] {
+    const urls = (Array.isArray(primaryUrls) ? primaryUrls : [primaryUrls]).filter(url => url.trim().length > 0);
+
+    if (urls.length > 0) {
+        return urls;
+    }
+
+    if (enabled && fallbackUrl.trim().length > 0) {
+        return [fallbackUrl];
+    }
+
+    return [];
+}
+
 export function getPartnerDetails(offer: TradeOffer, bot: Bot): Promise<{ personaName: string; avatarFull: any }> {
     return new Promise(resolve => {
         const defaultImage =

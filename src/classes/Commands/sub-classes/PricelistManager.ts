@@ -15,6 +15,8 @@ import Pricelist, { Entry, EntryData, PricelistChangedSource } from '../../Price
 import validator from '../../../lib/validator';
 import { testPriceKey } from '../../../lib/tools/export';
 import IPricer from '../../IPricer';
+import { formatCategoryList, normalizeBulkAddCategory, resolveCategorySkus, resolvePricedbSkus } from './bulkAddFilters';
+import { Item } from '../../IPricer';
 import { Currency } from 'src/types/TeamFortress2';
 import { isDiscordRedirect } from '../../../lib/discordRedirect';
 import { buildAddedEntryEmbed, buildUpdatedEntryEmbed } from '../../../lib/pricelistEntryEmbed';
@@ -24,6 +26,7 @@ import { buildAddedEntryEmbed, buildUpdatedEntryEmbed } from '../../../lib/price
 export default class PricelistManagerCommands {
     stopAutoAddCommand(): void {
         AutoAddQueue.stopJob();
+        AddPricedbQueue.stopJob();
     }
 
     static isSending = false;
@@ -568,10 +571,14 @@ export default class PricelistManagerCommands {
     }
 
     autoAddCommand(steamID: SteamID, message: string, prefix: string): void {
-        if (AutoAddQueue.isRunning()) {
+        void this.runAutoAddCommand(steamID, message, prefix);
+    }
+
+    private async runAutoAddCommand(steamID: SteamID, message: string, prefix: string): Promise<void> {
+        if (AutoAddQueue.isRunning() || AddPricedbQueue.isRunning()) {
             return this.bot.sendMessage(
                 steamID,
-                `❌ Autoadd is still running. Please wait until it's completed or send !stopautoadd to stop.`
+                `❌ A bulk add is already running. Please wait until it's completed or send !stopautoadd to stop.`
             );
         }
 
@@ -587,6 +594,27 @@ export default class PricelistManagerCommands {
                 `❌ Please only define item listing settings parameters, more info:` +
                     ` https://github.com/TF2Autobot/tf2autobot/wiki/Listing-settings-parameters`
             );
+        }
+
+        const categoryParam =
+            typeof params.category === 'string'
+                ? normalizeBulkAddCategory(params.category)
+                : typeof params.filter === 'string'
+                ? normalizeBulkAddCategory(params.filter)
+                : null;
+
+        if (params.category !== undefined || params.filter !== undefined) {
+            if (categoryParam === null) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ Unknown category "${String(params.category ?? params.filter)}".` +
+                        `\nAvailable categories: ${formatCategoryList()}` +
+                        `\nExample: ${prefix}autoadd category=unusual&intent=2&autoprice=true`
+                );
+            }
+
+            delete params.category;
+            delete params.filter;
         }
 
         if (!params) {
@@ -718,24 +746,47 @@ export default class PricelistManagerCommands {
         const pricelist = this.bot.pricelist.getPrices;
         const skusFromPricelist = Object.keys(pricelist);
 
-        const dict = this.bot.inventoryManager.getInventory.getItems;
-        const clonedDict = Object.assign({}, dict);
+        let skus: string[];
 
-        const pureAndWeapons = ['5021;6', '5000;6', '5001;6', '5002;6'].concat(
-            this.bot.craftWeapons.concat(this.bot.uncraftWeapons)
-        );
+        if (categoryParam) {
+            this.bot.sendMessage(steamID, `⏳ Fetching "${categoryParam}" items from the pricer...`);
 
-        for (const sku in clonedDict) {
-            if (!Object.prototype.hasOwnProperty.call(clonedDict, sku)) {
-                continue;
+            try {
+                skus = await resolveCategorySkus(this.bot, this.priceSource, categoryParam);
+            } catch (err) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ Failed to fetch items from the pricer: ${(err as Error).message}`
+                );
             }
 
-            if (pureAndWeapons.includes(sku)) {
-                delete clonedDict[sku];
+            if (skus.length === 0) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ No "${categoryParam}" items found in the pricer database.`
+                );
             }
+        } else {
+            const dict = this.bot.inventoryManager.getInventory.getItems;
+            const clonedDict = Object.assign({}, dict);
+
+            const pureAndWeapons = ['5021;6', '5000;6', '5001;6', '5002;6'].concat(
+                this.bot.craftWeapons.concat(this.bot.uncraftWeapons)
+            );
+
+            for (const sku in clonedDict) {
+                if (!Object.prototype.hasOwnProperty.call(clonedDict, sku)) {
+                    continue;
+                }
+
+                if (pureAndWeapons.includes(sku)) {
+                    delete clonedDict[sku];
+                }
+            }
+
+            skus = Object.keys(clonedDict);
         }
 
-        const skus = Object.keys(clonedDict);
         const total = skus.length;
 
         const totalTime = total * (params.autoprice ? 2 : 1) * 1000;
@@ -746,6 +797,7 @@ export default class PricelistManagerCommands {
         this.bot.sendMessage(
             steamID,
             `⏳ Running automatic add items... Total items to add: ${total}` +
+                (categoryParam ? ` (category: ${categoryParam})` : '') +
                 `\n${params.autoprice ? 2 : 1} seconds in between items, so it will be about ${
                     totalTime < aMin
                         ? `${Math.round(totalTime / aSecond)} seconds`
@@ -760,6 +812,214 @@ export default class PricelistManagerCommands {
 
         autoAdd.enqueue = skus;
         void autoAdd.executeAutoAdd();
+    }
+
+    addPricedbCommand(steamID: SteamID, message: string, prefix: string): void {
+        void this.runAddPricedbCommand(steamID, message, prefix);
+    }
+
+    private async runAddPricedbCommand(steamID: SteamID, message: string, prefix: string): Promise<void> {
+        if (AutoAddQueue.isRunning() || AddPricedbQueue.isRunning()) {
+            return this.bot.sendMessage(
+                steamID,
+                `❌ A bulk add is already running. Send "${prefix}stopautoadd" to abort it first.`
+            );
+        }
+
+        if (PricelistManagerCommands.isBulkOperation) {
+            return this.bot.sendMessage(steamID, `❌ Another bulk pricelist operation is already in progress.`);
+        }
+
+        const params = CommandParser.parseParams(CommandParser.removeCommand(removeLinkProtocol(message)));
+
+        if (params.isPartialPriced !== undefined) {
+            return this.bot.sendMessage(steamID, `❌ Cannot set "isPartialPriced" parameter!`);
+        }
+
+        if (params.sku !== undefined || params.name !== undefined || params.defindex !== undefined) {
+            return this.bot.sendMessage(
+                steamID,
+                `❌ Please only define listing settings parameters, more info:` +
+                    ` https://github.com/TF2Autobot/tf2autobot/wiki/Listing-settings-parameters`
+            );
+        }
+
+        const excludeJunk = params.excludejunk !== undefined ? Boolean(params.excludejunk) : true;
+        const pricedOnly = params.pricedonly !== undefined ? Boolean(params.pricedonly) : true;
+        const skipListed = params.skiplisted !== undefined ? Boolean(params.skiplisted) : true;
+        const confirm = params.confirm === true;
+
+        delete params.excludejunk;
+        delete params.pricedonly;
+        delete params.skiplisted;
+        delete params.confirm;
+
+        const categoryParam =
+            typeof params.category === 'string'
+                ? normalizeBulkAddCategory(params.category)
+                : typeof params.filter === 'string'
+                ? normalizeBulkAddCategory(params.filter)
+                : null;
+
+        if (params.category !== undefined || params.filter !== undefined) {
+            if (categoryParam === null) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ Unknown category "${String(params.category ?? params.filter)}".` +
+                        `\nAvailable categories: ${formatCategoryList()}`
+                );
+            }
+
+            delete params.category;
+            delete params.filter;
+        }
+
+        if (params.enabled === undefined) {
+            params.enabled = true;
+        }
+
+        if (params.min === undefined) {
+            params.min = 0;
+        }
+
+        if (params.max === undefined) {
+            params.max = 1;
+        }
+
+        if (params.intent === undefined) {
+            params.intent = 2;
+        } else if (typeof params.intent === 'string') {
+            const intent = ['buy', 'sell', 'bank'].indexOf(params.intent.toLowerCase());
+
+            if (intent !== -1) {
+                params.intent = intent;
+            }
+        }
+
+        if (typeof params.buy === 'object') {
+            params.buy.keys = params.buy.keys || 0;
+            params.buy.metal = params.buy.metal || 0;
+
+            if (params.autoprice === undefined) {
+                params.autoprice = false;
+            }
+        } else if (typeof params.buy !== 'object' && typeof params.sell === 'object') {
+            params['buy'] = { keys: 0, metal: 0 };
+        }
+
+        if (typeof params.sell === 'object') {
+            params.sell.keys = params.sell.keys || 0;
+            params.sell.metal = params.sell.metal || 0;
+
+            if (params.autoprice === undefined) {
+                params.autoprice = false;
+            }
+        } else if (typeof params.sell !== 'object' && typeof params.buy === 'object') {
+            params['sell'] = { keys: 0, metal: 0 };
+        }
+
+        if (
+            (params.sell !== undefined && params.buy === undefined) ||
+            (params.sell === undefined && params.buy !== undefined)
+        ) {
+            return this.bot.sendMessage(steamID, `❌ Please set both buy and sell prices, or use autoprice=true.`);
+        }
+
+        const isPremium = this.bot.handler.getBotInfo.premium;
+
+        if (params.promoted !== undefined) {
+            if (!isPremium) {
+                return this.bot.sendMessage(
+                    steamID,
+                    `❌ This account is not Backpack.tf Premium. You can't use "promoted" parameter.`
+                );
+            }
+
+            if (typeof params.promoted === 'boolean') {
+                params.promoted = params.promoted ? 1 : 0;
+            } else if (typeof params.promoted !== 'number' || params.promoted < 0 || params.promoted > 1) {
+                return this.bot.sendMessage(
+                    steamID,
+                    '❌ "promoted" parameter must be either 0 (false) or 1 (true)'
+                );
+            }
+        } else {
+            params['promoted'] = 0;
+        }
+
+        if (typeof params.note === 'object') {
+            params.note.buy = params.note.buy || null;
+            params.note.sell = params.note.sell || null;
+        }
+
+        if (params.note === undefined) {
+            params['note'] = { buy: null, sell: null };
+        }
+
+        if (params.group && typeof params.group !== 'string') {
+            params.group = String(params.group);
+        }
+
+        if (params.group === undefined) {
+            params['group'] = 'all';
+        }
+
+        if (params.autoprice === undefined) {
+            params.autoprice = true;
+        }
+
+        this.bot.sendMessage(steamID, `⏳ Fetching the full pricer database (backpack.tf / pricedb)...`);
+
+        let result;
+        try {
+            result = await resolvePricedbSkus(this.bot, this.priceSource, new Set(Object.keys(this.bot.pricelist.getPrices)), {
+                excludeJunk,
+                pricedOnly,
+                skipListed,
+                category: categoryParam
+            });
+        } catch (err) {
+            return this.bot.sendMessage(
+                steamID,
+                `❌ Failed to fetch pricer database: ${(err as Error).message}`
+            );
+        }
+
+        const { skus, pricerItems, totalInPricer, skippedListed, skippedUnpriced, skippedJunk } = result;
+
+        if (skus.length === 0) {
+            return this.bot.sendMessage(
+                steamID,
+                `❌ No items matched your filters.` +
+                    `\nPricer total: ${totalInPricer}` +
+                    `\nSkipped (already listed): ${skippedListed}` +
+                    `\nSkipped (no buy+sell price): ${skippedUnpriced}` +
+                    `\nSkipped (junk filter): ${skippedJunk}`
+            );
+        }
+
+        if (skus.length > 1000 && !confirm) {
+            return this.bot.sendMessage(
+                steamID,
+                `⚠️ This will add ${skus.length} items with autoprice from the pricer.` +
+                    `\nPricer total: ${totalInPricer} | Already listed: ${skippedListed}` +
+                    (categoryParam ? `\nCategory filter: ${categoryParam}` : '') +
+                    `\n\nRe-run with confirm=true to start.` +
+                    `\nExample: ${prefix}addpricedb confirm=true&autoprice=true&intent=2` +
+                    (categoryParam ? `\nOr narrow it: ${prefix}addpricedb category=unusual&confirm=true`
+                    : `\nTip: use category=unusual to avoid junk like killstreak kits.`)
+            );
+        }
+
+        this.bot.sendMessage(
+            steamID,
+            `⏳ Starting addpricedb — adding ${skus.length} items from the pricer with autoprice.` +
+                `\nSend "${prefix}stopautoadd" to abort.` +
+                `\n💡 You need keys/metal stock and backpack space for buy orders to actually profit.`
+        );
+
+        const queue = new AddPricedbQueue(this.bot, steamID, skus, pricerItems, params);
+        void queue.run();
     }
 
     async updateCommand(steamID: SteamID, message: string, prefix: string): Promise<void> {
@@ -2743,6 +3003,96 @@ function formatUsdPriceChange(oldEntry: Entry, newEntry: Entry): string {
         oldEntry.sellUsd,
         newEntry.sellUsd
     )}`;
+}
+
+class AddPricedbQueue {
+    private static job: { stop: boolean } | undefined;
+
+    constructor(
+        private readonly bot: Bot,
+        private readonly steamID: SteamID,
+        private readonly skus: string[],
+        private readonly pricerItems: Item[],
+        private readonly params: UnknownDictionaryKnownValues
+    ) {}
+
+    static isRunning(): boolean {
+        return this.job !== undefined;
+    }
+
+    static stopJob(): void {
+        if (this.job) {
+            this.job.stop = true;
+        }
+    }
+
+    private static removeJob(): void {
+        this.job = undefined;
+    }
+
+    async run(): Promise<void> {
+        AddPricedbQueue.job = { stop: false };
+        PricelistManagerCommands.isBulkOperation = true;
+
+        const batchSize = 100;
+        let added = 0;
+        let skipped = 0;
+        let failed = 0;
+        let processed = 0;
+
+        for (let i = 0; i < this.skus.length; i += batchSize) {
+            if (AddPricedbQueue.job?.stop) {
+                break;
+            }
+
+            const batch = this.skus.slice(i, i + batchSize);
+
+            await Promise.all(
+                batch.map(sku => {
+                    processed++;
+                    const isLast = processed === this.skus.length;
+                    const entryData = Object.assign({}, this.params, { sku }) as EntryData;
+
+                    return this.bot.pricelist
+                        .addPrice({
+                            entryData,
+                            emitChange: true,
+                            src: PricelistChangedSource.Command,
+                            isBulk: true,
+                            pricerItems: this.pricerItems,
+                            isLast
+                        })
+                        .then(() => {
+                            added++;
+                        })
+                        .catch(err => {
+                            if ((err as Error).message === 'Item is already priced') {
+                                skipped++;
+                            } else {
+                                failed++;
+                            }
+                        });
+                })
+            );
+
+            this.bot.sendMessage(
+                this.steamID,
+                `📦 addpricedb: ${Math.min(i + batchSize, this.skus.length)}/${this.skus.length} processed` +
+                    ` (${added} added, ${skipped} skipped, ${failed} failed)`
+            );
+
+            await timersPromises.setTimeout(500);
+        }
+
+        const wasStopped = AddPricedbQueue.job?.stop === true;
+        PricelistManagerCommands.isBulkOperation = false;
+        AddPricedbQueue.removeJob();
+
+        this.bot.sendMessage(
+            this.steamID,
+            `${wasStopped ? '🛑 Stopped' : '✅ Finished'} addpricedb: ${added} added, ${skipped} skipped, ${failed} failed / ${this.skus.length} total`
+        );
+    }
 }
 
 class AutoAddQueue {

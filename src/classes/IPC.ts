@@ -5,7 +5,7 @@ import log from '../lib/logger';
 import Bot from './Bot';
 import fs, { promises as fsp } from 'fs';
 import path from 'path';
-import Options, { getOptionsPath, JsonOptions, removeCliOptions } from './Options';
+import Options, { getOptionsPath, JsonOptions, normalizeDiscordWebhookOptions, removeCliOptions } from './Options';
 import generateCert from '../lib/tools/generateCert';
 import { Entry, EntryData } from './Pricelist';
 import { deepMerge } from '../lib/tools/deep-merge';
@@ -92,6 +92,7 @@ export default class ipcHandler extends IPC {
             this.ourServer.on('sendChat', this.sendChat.bind(this));
             this.ourServer.on('getOptions', this.sendOptions.bind(this));
             this.ourServer.on('updateOptions', this.updateOptions.bind(this));
+            this.ourServer.on('deleteUntradableJunk', this.deleteUntradableJunk.bind(this));
         };
         this[this.options.tls ? 'connectToNet' : 'connectTo']('autobot_gui', onConnected);
     }
@@ -101,6 +102,18 @@ export default class ipcHandler extends IPC {
         if (item?.time) delete item.time;
         if (item?.statslink) delete item.statslink;
         if (item?.style) delete item.style;
+    }
+
+    private static ipcErrorMessage(error: unknown): string {
+        if (error instanceof Error) {
+            return error.message;
+        }
+
+        if (typeof error === 'string') {
+            return error;
+        }
+
+        return String(error);
     }
 
     /* HANDLERS */
@@ -117,8 +130,8 @@ export default class ipcHandler extends IPC {
             .then(item => {
                 this.ourServer.emit('itemAdded', Object.assign(item, priceKey === item.sku ? {} : { id: priceKey }));
             })
-            .catch((e: string) => {
-                this.ourServer.emit('itemAdded', e);
+            .catch((e: unknown) => {
+                this.ourServer.emit('itemAdded', ipcHandler.ipcErrorMessage(e));
             });
     }
 
@@ -135,8 +148,8 @@ export default class ipcHandler extends IPC {
             .then(item => {
                 this.ourServer.emit('itemUpdated', Object.assign(item, priceKey === item.sku ? {} : { id: priceKey }));
             })
-            .catch((e: string) => {
-                this.ourServer.emit('itemUpdated', e);
+            .catch((e: unknown) => {
+                this.ourServer.emit('itemUpdated', ipcHandler.ipcErrorMessage(e));
             });
     }
 
@@ -146,8 +159,8 @@ export default class ipcHandler extends IPC {
             .then(item => {
                 this.ourServer.emit('itemRemoved', Object.assign(item, priceKey === item.sku ? {} : { id: priceKey }));
             })
-            .catch((e: string) => {
-                this.ourServer.emit('itemRemoved', e);
+            .catch((e: unknown) => {
+                this.ourServer.emit('itemRemoved', ipcHandler.ipcErrorMessage(e));
             });
     }
 
@@ -200,7 +213,32 @@ export default class ipcHandler extends IPC {
     }
 
     sendInventory(): void {
-        this.ourServer.emit('inventory', this.bot.inventoryManager.getInventory.getItems);
+        const inventory = this.bot.inventoryManager?.getInventory;
+
+        if (!inventory) {
+            this.ourServer.emit('inventory', {
+                tradable: {},
+                nonTradable: {},
+                updatedAt: Date.now()
+            });
+            return;
+        }
+
+        this.ourServer.emit('inventory', {
+            tradable: ipcHandler.packInventoryBucket(inventory.getItems),
+            nonTradable: {},
+            updatedAt: Date.now()
+        });
+    }
+
+    private static packInventoryBucket(bucket: Record<string, { id: string | number }[]> | undefined): Record<string, string[]> {
+        const out: Record<string, string[]> = {};
+
+        for (const sku of Object.keys(bucket ?? {})) {
+            out[sku] = (bucket[sku] ?? []).map(item => String(item.id));
+        }
+
+        return out;
     }
 
     sendOptions(): void {
@@ -212,6 +250,7 @@ export default class ipcHandler extends IPC {
 
     updateOptions(newOptions): void {
         const opt = this.bot.options;
+        normalizeDiscordWebhookOptions(newOptions as JsonOptions);
         // eslint-disable-next-line @typescript-eslint/no-unsafe-argument
         const errors = validator(newOptions, 'options');
         if (errors !== null) {
@@ -235,6 +274,11 @@ export default class ipcHandler extends IPC {
                 this.ourServer.emit('optionsUpdated', msg);
                 return;
             });
+    }
+
+    private deleteUntradableJunk(): void {
+        this.bot.handler.deleteUntradableJunk();
+        this.ourServer.emit('untradableJunkDeleted', { success: true });
     }
 }
 

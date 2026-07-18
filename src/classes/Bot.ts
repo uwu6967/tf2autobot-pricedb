@@ -41,6 +41,7 @@ import InventoryCostBasis from './InventoryCostBasis';
 import log from '../lib/logger';
 import Bans, { IsBanned } from '../lib/bans';
 import { sendStats } from './DiscordWebhook/export';
+import sendVersionUpdate from './DiscordWebhook/sendVersionUpdate';
 
 import Options from './Options';
 import IPricer from './IPricer';
@@ -48,7 +49,7 @@ import { EventEmitter } from 'events';
 import { Blocked } from './MyHandler/interfaces';
 import ipcHandler from './IPC';
 import filterAxiosError from '@tf2autobot/filter-axios-error';
-import { axiosAbortSignal } from '../lib/helpers';
+import { axiosAbortSignal, exponentialBackoff, isSteamRateLimitError } from '../lib/helpers';
 import { apiRequest } from '../lib/apiRequest';
 import EasyCopyPaste from 'easycopypaste';
 
@@ -80,6 +81,20 @@ interface StartData {
     pricelist?: PricesDataObject;
     pollData?: TradeOfferManager.PollData;
     blockedList?: Blocked;
+}
+
+const GITHUB_RELEASES_URL = 'https://github.com/uwu6967/tf2autobot-pricedb/releases';
+
+/** Ignore legacy upstream 5.x when the fork runs 1.x so semver does not prefer old tags. */
+function isForkUpdateAvailable(current: string, latest: string): boolean {
+    const currentMajor = semver.major(current);
+    const latestMajor = semver.major(latest);
+
+    if (currentMajor < 5 && latestMajor >= 5) {
+        return false;
+    }
+
+    return semver.lt(current, latest);
 }
 
 export default class Bot {
@@ -434,11 +449,34 @@ export default class Bot {
                         void this.getLocalizationFile('retry').then(resolve).catch(reject);
                         return;
                     }
-                    // Just log, do nothing.
+                    // Non-critical; bot can run without the latest localization file.
                     log.warn('Error getting TF2 Localization file.');
-                    reject(err as Error);
+                    resolve();
                 });
         });
+    }
+
+    private scheduleTradeURLRefresh(attempt = 0): void {
+        const delay = exponentialBackoff(attempt, 60000);
+        setTimeout(() => {
+            this.community.getTradeURL((err: unknown, url: unknown) => {
+                if (err) {
+                    if (isSteamRateLimitError(err) && attempt < 10) {
+                        log.warn(`Background trade URL refresh rate limited, will retry (attempt ${attempt + 1})`);
+                        this.scheduleTradeURLRefresh(attempt + 1);
+                        return;
+                    }
+
+                    if (attempt < 10) {
+                        this.scheduleTradeURLRefresh(attempt + 1);
+                    }
+                    return;
+                }
+
+                this.tradeOfferUrl = url as string;
+                log.debug('Trade URL refreshed in background');
+            });
+        }, delay);
     }
 
     get alertTypes(): string[] {
@@ -475,6 +513,10 @@ export default class Bot {
         this.admins
             .filter(steamID => !exclude.includes(steamID.toString()))
             .forEach(steamID => this.sendMessage(steamID, message));
+
+        if (type === 'version') {
+            sendVersionUpdate(this, message);
+        }
     }
 
     getPrefix(steamID?: SteamID): string {
@@ -588,11 +630,12 @@ export default class Bot {
     }> {
         return this.getLatestVersion().then(async content => {
             const latestVersion = content.version;
-            const canUpdateRepo = semver.compare(process.env.BOT_VERSION, '5.6.0') !== -1 && content.canUpdateRepo;
+            const canUpdateRepo = content.canUpdateRepo;
             const updateMessage = content.updateMessage;
 
-            const hasNewVersion = semver.lt(process.env.BOT_VERSION, latestVersion);
-            const newVersionIsMajor = semver.diff(process.env.BOT_VERSION, latestVersion) === 'major';
+            const hasNewVersion = isForkUpdateAvailable(process.env.BOT_VERSION, latestVersion);
+            const newVersionIsMajor =
+                hasNewVersion && semver.diff(process.env.BOT_VERSION, latestVersion) === 'major';
 
             if (this.lastNotifiedVersion !== latestVersion && hasNewVersion) {
                 this.lastNotifiedVersion = latestVersion;
@@ -600,7 +643,7 @@ export default class Bot {
                 this.messageAdmins(
                     'version',
                     `⚠️ Update available! Current: v${process.env.BOT_VERSION}, Latest: v${latestVersion}.` +
-                        `\n\n📰 Check discord (https://pricedb.io/discord) for release notes` +
+                        `\n\n📰 Check GitHub for release notes: ${GITHUB_RELEASES_URL}` +
                         (updateMessage ? `\n\n💬 Update message: ${updateMessage}` : ''),
                     []
                 );
@@ -657,7 +700,7 @@ export default class Bot {
         return new Promise((resolve, reject) => {
             apiRequest<GithubPackageJson>({
                 method: 'GET',
-                url: 'https://raw.githubusercontent.com/TF2-Price-DB/tf2autobot-pricedb/master/package.json',
+                url: 'https://raw.githubusercontent.com/uwu6967/tf2autobot-pricedb/master/package.json',
                 signal: axiosAbortSignal(60000)
             })
                 .then(data => {
@@ -2187,6 +2230,7 @@ export default class Bot {
 
 interface GithubPackageJson {
     version: string;
+    upstreamVersion?: string;
     updaterepo: boolean;
     updateMessage: string;
 }

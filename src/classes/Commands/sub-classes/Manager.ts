@@ -6,6 +6,7 @@ import { Listing } from '@tf2autobot/bptf-listings';
 import validUrl from 'valid-url';
 import * as timersPromises from 'timers/promises';
 import path from 'path';
+import fs from 'fs';
 import child from 'child_process';
 import dayjs from 'dayjs';
 import { isDiscordRedirect } from '../../../lib/discordRedirect';
@@ -1067,6 +1068,7 @@ export default class ManagerCommands {
 
                 // Set isUpdating status, so any command will not be processed
                 this.bot.handler.isUpdatingStatus = true;
+                this.bot.trades.clearEscrowRestart();
 
                 // Stop polling offers
                 this.bot.manager.pollInterval = -1;
@@ -1075,8 +1077,7 @@ export default class ManagerCommands {
                 const exec = (command: string): Promise<void> => {
                     return new Promise((resolve, reject) => {
                         child.exec(command, { cwd }, err => {
-                            if (err && !['npm run build'].includes(command)) {
-                                // not sure why this error always appeared: https://prnt.sc/9eVBx95h9uT_
+                            if (err) {
                                 log.error(`Error on updaterepo (executing ${command}):`, err);
                                 return reject(err);
                             }
@@ -1093,10 +1094,8 @@ export default class ManagerCommands {
                     this.bot.sendMessage(steamID, '⌛ Pulling changes...');
                     await exec('git pull --prune');
 
-                    this.bot.sendMessage(steamID, '⌛ Deleting node_modules and dist directories...');
-                    await exec(
-                        process.platform === 'win32' ? 'rmdir /s /q node_modules dist' : 'rm -rf node_modules dist'
-                    );
+                    this.bot.sendMessage(steamID, '⌛ Deleting node_modules directory...');
+                    await exec(process.platform === 'win32' ? 'rmdir /s /q node_modules' : 'rm -rf node_modules');
 
                     this.bot.sendMessage(steamID, '⌛ Installing packages...');
                     await exec(
@@ -1105,6 +1104,11 @@ export default class ManagerCommands {
 
                     this.bot.sendMessage(steamID, '⌛ Compiling TypeScript codes into JavaScript...');
                     await exec('npm run build');
+
+                    const appJs = path.join(cwd, 'dist', 'app.js');
+                    if (!fs.existsSync(appJs)) {
+                        throw new Error('Build failed: dist/app.js was not created');
+                    }
 
                     this.bot.sendMessage(steamID, '⌛ Restarting...');
                     await this.bot.botManager.restartProcess();

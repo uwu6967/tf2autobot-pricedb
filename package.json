@@ -1,6 +1,7 @@
 {
     "name": "tf2autobot-pricedb-io",
     "version": "1.0.6",
+    "upstreamVersion": "5.17.0",
     "description": "Fully automated TF2 trading bot advertising on www.backpack.tf using prices from www.pricedb.io, Originally made by Nicklason.",
     "main": "dist/app.js",
     "scripts": {
@@ -26,7 +27,7 @@
         "url": "https://github.com/uwu6967/tf2autobot-pricedb/issues"
     },
     "updaterepo": true,
-    "updateMessage": "Merged upstream 5.17.0 RC with Discord Autokeys/partial-autoprice and panel IPC string errors. Check options.json / Discord settings after updating.",
+    "updateMessage": "Merged upstream 5.17.0 with Discord Autokeys/partial-autoprice, panel IPC string errors, and uwu6967 blank-bot releases. Check options.json after updating.",
     "homepage": "https://github.com/uwu6967/tf2autobot-pricedb#readme",
     "dependencies": {
         "@tf2autobot/bptf-listings": "github:Hexenum/node-bptf-listings",

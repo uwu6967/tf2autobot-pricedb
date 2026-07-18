@@ -5,7 +5,7 @@ import { removeLinkProtocol } from '../functions/utils';
 import Bot from '../../Bot';
 import Inventory from '../../Inventory';
 import CommandParser from '../../CommandParser';
-import { getFilesPath, getOptionsPath, JsonOptions, removeCliOptions } from '../../Options';
+import { getFilesPath, getOptionsPath, JsonOptions, normalizeDiscordWebhookOptions, removeCliOptions } from '../../Options';
 import validator from '../../../lib/validator';
 import log from '../../../lib/logger';
 import { deepMerge } from '../../../lib/tools/deep-merge';
@@ -890,17 +890,7 @@ export default class OptionsCommands {
 
         const knownParams = params as JsonOptions;
 
-        if (knownParams.discordWebhook?.ownerID !== undefined) {
-            // Stringify numbers
-            if (Array.isArray(knownParams.discordWebhook.ownerID)) {
-                knownParams.discordWebhook.ownerID.map(id => String(id));
-            }
-        }
-
-        if (knownParams.discordWebhook?.embedColor !== undefined) {
-            // Stringify numbers
-            knownParams.discordWebhook.embedColor = String(knownParams.discordWebhook.embedColor);
-        }
+        normalizeDiscordWebhookOptions(knownParams);
 
         const result: JsonOptions = deepMerge(saveOptions, knownParams);
 

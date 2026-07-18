@@ -9,11 +9,12 @@ try {
 }
 import 'module-alias/register';
 // eslint-disable-next-line @typescript-eslint/no-var-requires,@typescript-eslint/no-unsafe-assignment
-const { version: BOT_VERSION } = require('../package.json');
+const { version: BOT_VERSION, upstreamVersion: BOT_UPSTREAM_VERSION } = require('../package.json');
 import { getPricer } from './lib/pricer/pricer';
 import { loadOptions } from './classes/Options';
 
 process.env.BOT_VERSION = BOT_VERSION as string;
+process.env.BOT_UPSTREAM_VERSION = (BOT_UPSTREAM_VERSION as string | undefined) ?? '';
 
 import fs from 'fs';
 import path from 'path';

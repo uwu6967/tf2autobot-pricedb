@@ -170,6 +170,12 @@ function getWear(item: EconItem): number | null {
     return itemWear === -1 ? null : itemWear + 1;
 }
 
+function getDefindexByItemName(schema: Schema, name: string): number | null {
+    const schemaItem = schema.getItemByItemName(name);
+
+    return schemaItem?.defindex ?? null;
+}
+
 function parseDescriptions(
     item: EconItem,
     schema: Schema,
@@ -299,7 +305,7 @@ function parseDescriptions(
                 .replace('Kit', '')
                 .trim();
 
-            obj.target = schema.getItemByItemName(name).defindex;
+            obj.target = getDefindexByItemName(schema, name);
             obj.outputQuality = 6;
             obj.output = [6527, 6523, 6526][killstreak - 1];
         } else if (output.includes(' Strangifier')) {
@@ -307,7 +313,7 @@ function parseDescriptions(
 
             const name = output.replace('Strangifier', '').trim();
 
-            obj.target = schema.getItemByItemName(name).defindex;
+            obj.target = getDefindexByItemName(schema, name);
             obj.outputQuality = 6;
             obj.output = 6522;
         } else if (output.includes("Collector's")) {
@@ -316,7 +322,7 @@ function parseDescriptions(
             const name = output.replace("Collector's", '').trim();
 
             obj.outputQuality = 14;
-            obj.output = schema.getItemByItemName(name).defindex;
+            obj.output = getDefindexByItemName(schema, name);
         }
     }
 
@@ -450,21 +456,22 @@ function getTarget(item: EconItem, schema: SchemaManager.Schema): number | null 
         ].includes(defindex)
     ) {
         // Killstreak Kit
-        return schema.getItemByItemName(
+        return getDefindexByItemName(
+            schema,
             item.market_hash_name
                 .substring(10, itemHashNameLength - 3)
                 .replace('Killstreak', '')
                 .trim()
-        ).defindex;
+        );
     } else if (defindex === 6523) {
         // Specialized Killstreak Kit
-        return schema.getItemByItemName(item.market_hash_name.substring(22, itemHashNameLength - 3).trim()).defindex;
+        return getDefindexByItemName(schema, item.market_hash_name.substring(22, itemHashNameLength - 3).trim());
     } else if (defindex === 6526) {
         // Professional Killstreak Kit
-        return schema.getItemByItemName(item.market_hash_name.substring(23, itemHashNameLength - 3).trim()).defindex;
+        return getDefindexByItemName(schema, item.market_hash_name.substring(23, itemHashNameLength - 3).trim());
     } else if (defindex === 9258) {
         // Unusualifier
-        return schema.getItemByItemName(item.market_hash_name.substring(7, itemHashNameLength - 12).trim()).defindex;
+        return getDefindexByItemName(schema, item.market_hash_name.substring(7, itemHashNameLength - 12).trim());
     }
 
     return null;
